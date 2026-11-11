@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://media.formula1.com https://upload.wikimedia.org https://thumb.wikimedia.org; connect-src 'self' https://api.jolpi.ca https://api.openf1.org https://api.open-meteo.com https://archive-api.open-meteo.com https://en.wikipedia.org; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="theme-color" content="#08090b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="F1 Timeline">
+<link rel="preconnect" href="https://api.jolpi.ca" crossorigin>
+<link rel="dns-prefetch" href="https://api.openf1.org">
+<link rel="dns-prefetch" href="https://en.wikipedia.org">
+<link rel="preconnect" href="https://media.formula1.com">
+<script>/* theme before the first paint: the saved choice, else the system setting (not in automated browsers) */try{var t=localStorage.getItem('f1theme')||localStorage.getItem('f1tl:theme');if(t==='light'||(!t&&!navigator.webdriver&&matchMedia('(prefers-color-scheme: light)').matches))document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<title>Alpine F1 Team · команда Формулы‑1 2026 · F1 Timeline</title>
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="F1 Timeline 2.0">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Alpine F1 Team · команда Формулы‑1 2026 · F1 Timeline">
+<meta property="og:description" content="Alpine F1 Team: 6 место в Кубке конструкторов Формулы‑1 2026, очков: 69, побед: 0. Данные Jolpica F1 на 2026-11-04.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Alpine F1 Team · команда Формулы‑1 2026 · F1 Timeline">
+<meta name="twitter:description" content="Alpine F1 Team: 6 место в Кубке конструкторов Формулы‑1 2026, очков: 69, побед: 0. Данные Jolpica F1 на 2026-11-04.">
+<meta name="description" content="Alpine F1 Team: 6 место в Кубке конструкторов Формулы‑1 2026, очков: 69, побед: 0. Данные Jolpica F1 на 2026-11-04.">
+<link rel="canonical" href="https://oswarit.github.io/f1-timeline/teams/alpine/">
+<meta property="og:url" content="https://oswarit.github.io/f1-timeline/teams/alpine/">
+<meta property="og:image" content="https://oswarit.github.io/f1-timeline/og/teams.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:image" content="https://oswarit.github.io/f1-timeline/og/teams.jpg">
+<link rel="manifest" href="/f1-timeline/manifest.webmanifest">
+<link rel="icon" href="/f1-timeline/icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/f1-timeline/icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="/f1-timeline/icons/apple-touch-icon.png">
+<link rel="preload" href="/f1-timeline/assets/exo2-2.74c8522938.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/f1-timeline/assets/exo2-1.f6117b252d.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/f1-timeline/data/core.a530e58b83.js" as="script">
+<link rel="preload" href="/f1-timeline/assets/app.1a6fc31758.js" as="script">
+<link rel="stylesheet" href="/f1-timeline/assets/app.74126fe061.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"F1 Timeline","url":"https://oswarit.github.io/f1-timeline/","inLanguage":"ru","description":"Формула‑1: отрыв лидера, обратный отсчёт до гонки, прогноз погоды и расписание сессий.","dateModified":"2026-11-04","isBasedOn":["https://api.jolpi.ca/ergast/f1","https://openf1.org","https://open-meteo.com","https://www.wikipedia.org"]}</script>
+<script>window.__F1_SITE={"root":"/f1-timeline/","tab":"teams","seasons":{"2016":"data/seasons/2016.75bcdc85f0.json","2017":"data/seasons/2017.d8b18b1062.json","2018":"data/seasons/2018.6501bb63f8.json","2019":"data/seasons/2019.a914ff17f8.json","2020":"data/seasons/2020.f028e95978.json","2021":"data/seasons/2021.bd35e0aecc.json","2022":"data/seasons/2022.f23f728793.json","2023":"data/seasons/2023.ab657078e2.json","2024":"data/seasons/2024.8383abedbc.json","2025":"data/seasons/2025.d2800b6f14.json"},"pages":{"driver":["antonelli","max_verstappen","hamilton","russell","leclerc","norris","piastri","hadjar","lawson","gasly","arvid_lindblad","colapinto","bearman","bortoleto","hulkenberg","ocon","alonso","sainz","albon","tsunoda","ryo_hirakawa","stroll","bottas","perez"],"team":["mercedes","ferrari","red_bull","mclaren","rb","alpine","haas","audi","williams","aston_martin","cadillac"]},"chart":"assets/chart.548863aac1.js","version":"a695c4a622","champions":{"2026":{"dir":"champions/2026/","photos":[{"file":"1","author":"Liauzh","licence":"CC BY-SA 4.0","source":"https://commons.wikimedia.org/wiki/File:2026_Bahrain_GP_-_Mercedes_-_Kimi_Antonelli_-_Race.jpg"},{"file":"2","author":"Steffen Prößdorf","licence":"CC BY-SA 4.0","source":"https://commons.wikimedia.org/wiki/File:2026-08-23_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2026_STP_3011.jpg"},{"file":"3","author":"Steffen Prößdorf","licence":"CC BY-SA 4.0","source":"https://commons.wikimedia.org/wiki/File:2026-08-23_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2026_STP_3019.jpg"},{"file":"4","author":"Steffen Prößdorf","licence":"CC BY-SA 4.0","source":"https://commons.wikimedia.org/wiki/File:2026-08-23_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2026_STP_2931.jpg"}]}},"headshots":{"ts":1794428055513,"map":{"ALB":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/A/ALEALB01_Alexander_Albon/alealb01.png.transform/1col/image.png","ALO":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/F/FERALO01_Fernando_Alonso/feralo01.png.transform/1col/image.png","ANT":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/K/ANDANT01_Kimi_Antonelli/andant01.png.transform/1col/image.png","BEA":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/O/OLIBEA01_Oliver_Bearman/olibea01.png.transform/1col/image.png","BOR":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/G/GABBOR01_Gabriel_Bortoleto/gabbor01.png.transform/1col/image.png","BOT":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/V/VALBOT01_Valtteri_Bottas/valbot01.png.transform/1col/image.png","COL":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/F/FRACOL01_Franco_Colapinto/fracol01.png.transform/1col/image.png","GAS":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/P/PIEGAS01_Pierre_Gasly/piegas01.png.transform/1col/image.png","HAD":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/I/ISAHAD01_Isack_Hadjar/isahad01.png.transform/1col/image.png","HAM":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LEWHAM01_Lewis_Hamilton/lewham01.png.transform/1col/image.png","HUL":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/N/NICHUL01_Nico_Hulkenberg/nichul01.png.transform/1col/image.png","LAW":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LIALAW01_Liam_Lawson/lialaw01.png.transform/1col/image.png","LEC":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CHALEC01_Charles_Leclerc/chalec01.png.transform/1col/image.png","LIN":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/A/ARVLIN01_Arvid_Lindblad/arvlin01.png.transform/1col/image.png","NOR":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LANNOR01_Lando_Norris/lannor01.png.transform/1col/image.png","OCO":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/E/ESTOCO01_Esteban_Ocon/estoco01.png.transform/1col/image.png","PER":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/S/SERPER01_Sergio_Perez/serper01.png.transform/1col/image.png","PIA":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/O/OSCPIA01_Oscar_Piastri/oscpia01.png.transform/1col/image.png","RUS":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/G/GEORUS01_George_Russell/georus01.png.transform/1col/image.png","SAI":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CARSAI01_Carlos_Sainz/carsai01.png.transform/1col/image.png","STR":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LANSTR01_Lance_Stroll/lanstr01.png.transform/1col/image.png","TSU":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/Y/YUKTSU01_Yuki_Tsunoda/yuktsu01.png.transform/1col/image.png","VER":"https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/M/MAXVER01_Max_Verstappen/maxver01.png.transform/1col/image.png"}},"lazy":"assets/more.09af0493d4.js","deep":"team/alpine/2026"};</script>
+
+</head>
+<body>
+<a class="skip-link" href="#main" tabindex="0" aria-label="Перейти к содержимому (skip to main content)">Перейти к содержимому</a>
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark">F1</div>
+      <div>
+        <b translate="no">F1 TIMELINE 2.0</b>
+        <small>Пит-уолл и аналитика гонок</small>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="liveBadge" class="live-badge" hidden><i></i>LIVE</span>
+      <span id="status" class="status" role="button" tabindex="0" title="Состояние источников данных" aria-haspopup="true"><span class="telemetry-dot"></span><span id="statusText">Загрузка</span><span id="healthDots" class="health-dots" aria-hidden="true"><i data-svc="jolpica"></i><i data-svc="openf1"></i><i data-svc="meteo"></i></span></span>
+      <button class="icon-btn" id="notifyBtn" title="Включить уведомления о сессиях и итогах гонок" aria-label="Уведомления" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3a1.5 1.5 0 0 0-3 0v1.16A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2z"/></svg>
+      </button>
+      <button class="search-trigger" id="searchBtn" title="Поиск по пилотам, командам, трассам и гонкам (Ctrl+K или /)">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.38A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/></svg>
+        <span>Поиск</span><kbd aria-hidden="true">⌘K</kbd>
+      </button>
+      <button class="icon-btn" id="refreshBtn" title="Обновить данные" aria-label="Обновить данные">
+        <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      </button>
+      <button class="icon-btn" id="exportHtmlBtn" title="Экспорт обновлённого HTML (вшить данные)" aria-label="Экспорт обновлённого HTML">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 4a8 8 0 0 0 0 16v-16z"/></svg>
+      </button>
+    </div>
+  </div>
+  <nav aria-label="Основная навигация">
+    <div class="nav-inner" id="nav">
+      <div class="nav-indicator"></div>
+      <a href="/f1-timeline/" data-tab="home"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span class="nav-key">[1]</span> Обзор</a>
+      <a href="/f1-timeline/standings/" data-tab="standings"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5A2.5 2.5 0 0 0 7 9.5"/><path d="M17 6h2.5A2.5 2.5 0 0 1 17 9.5"/><path d="M12 14v4"/><path d="M8.5 20h7"/></svg><span class="nav-key">[2]</span> Турнир</a>
+      <a href="/f1-timeline/calendar/" data-tab="calendar"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/></svg><span class="nav-key">[3]</span> Календарь</a>
+      <a href="/f1-timeline/circuits/" data-tab="circuits"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 5h11l-2 4 2 4H5"/></svg><span class="nav-key">[4]</span> Трассы</a>
+      <a href="/f1-timeline/drivers/" data-tab="drivers"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-4 3.5-6 7-6s6.2 2 7 6"/></svg><span class="nav-key">[5]</span> Пилоты</a>
+      <a href="/f1-timeline/teams/" data-tab="teams" class="active" aria-current="page"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.2 7.8 8 9 4.8-1.2 8-4.5 8-9V6z"/></svg><span class="nav-key">[6]</span> Команды</a>
+      <a href="/f1-timeline/compare/" data-tab="compare"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 3 8l4 4"/><path d="M3 8h13"/><path d="m17 20 4-4-4-4"/><path d="M21 16H8"/></svg><span class="nav-key">[7]</span> Сравнение</a>
+      <a href="/f1-timeline/my/" data-tab="my"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="nav-key">[8]</span> Моё</a>
+      <a href="/f1-timeline/history/" data-tab="history"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg><span class="nav-key">[9]</span> История</a>
+    </div>
+  </nav>
+</header>
+
+<div id="fileProtocolNotice" class="file-protocol-banner" style="display:none;" role="alert">
+  <div class="banner-text">
+    <span style="color:var(--amber);font-weight:700">АВТОНОМНЫЙ РЕЖИМ (file://):</span>
+    <span>данные из открытых API и встроенного снимка, сервер не нужен.</span>
+  </div>
+  <button class="banner-close-btn" aria-label="Закрыть уведомление">×</button>
+</div>
+<script>if(location.protocol==="file:"){var _fpn=document.getElementById("fileProtocolNotice");if(_fpn)_fpn.style.display="flex";/* офлайн-файл большой (снимок внутри): пока он дочитывается, браузер успевает нарисовать недособранную главную, и она потом сдвигается. Содержимое показываем, когда страница прочитана целиком; шапка видна сразу */document.documentElement.classList.add("parsing");document.addEventListener("DOMContentLoaded",function(){document.documentElement.classList.remove("parsing")});}</script>
+
+<noscript><p style="margin:16px;padding:14px 16px;border:1px solid #363e4d;border-radius:12px;font:15px/1.5 system-ui,sans-serif">Сайту нужен JavaScript: таблицы, календарь и карточки строятся в браузере из открытых данных Jolpica F1 и OpenF1. Включите JavaScript и обновите страницу.</p></noscript>
+<main id="main" tabindex="-1">
+  <h1 class="sr-only" id="pageH1">Команды · F1 Timeline</h1>
+  <!-- 1. HOME -->
+  <section id="home" class="panel">
+    <div class="hero hero-scene">
+      <div class="scene accent-card" id="homeScene">
+        <div class="scene-info">
+          <div class="eyebrow">Следующий Гран-при</div>
+          <h2 id="nextName">Гран-при Лас-Вегаса</h2>
+          <p id="nextMeta" class="subtle">Las Vegas Strip Street Circuit · 2026-11-22</p>
+          <div class="countdown-box" id="countdownBox" role="timer" aria-label="До старта гонки">
+            <div class="cd-unit"><span class="cd-val" id="cdDays">00</span><span class="cd-lbl">ДНЕЙ</span></div>
+            <div class="cd-sep">:</div>
+            <div class="cd-unit"><span class="cd-val" id="cdHours">00</span><span class="cd-lbl">ЧАСОВ</span></div>
+            <div class="cd-sep">:</div>
+            <div class="cd-unit"><span class="cd-val" id="cdMins">00</span><span class="cd-lbl">МИН</span></div>
+            <div class="cd-sep">:</div>
+            <div class="cd-unit"><span class="cd-val" id="cdSecs">00</span><span class="cd-lbl">СЕК</span></div>
+          </div>
+          <div class="next-foot"><span id="nextState" class="pill">Расписание сессий</span><div id="nextWeather" class="nx-weather" hidden></div></div>
+        </div>
+        <div class="scene-track">
+          <div class="hero-track" id="nextTrack" hidden></div>
+          <div class="hero-sectors-legend" id="heroSectorsLegend" role="group" aria-label="Секторы трассы"></div>
+          <div class="lap-hud" id="heroLapHud"></div>
+        </div>
+      </div>
+      <div class="hero-card scene-season is-champion" id="seasonCard">
+        <div class="hall-bg" id="hallBg" aria-hidden="true"></div>
+        <div class="champ-hall" id="championHall"><div class="eyebrow hall-eyebrow">Чемпион мира 2026 · решено математически</div>
+        <div class="hall-name"><span>Andrea Kimi</span><b>Antonelli</b></div>
+        <div class="hall-team">Mercedes · <span class="hall-num">12</span></div>
+        <div class="hall-stats"><div><b>380</b><span>очков</span></div><div><b>9</b><span>побед</span></div><div><b>16</b><span>подиумов</span></div><div><b>7</b><span>поулов</span></div></div>
+        <div class="hall-foot"><button type="button" class="btn secondary" data-hall-driver="antonelli">Личное дело чемпиона</button><small class="hall-credit"></small></div></div>
+        <div class="scene-season-head">
+          <div class="eyebrow">Чемпионат мира Формулы‑1</div>
+          <h1 id="heroTitle" hidden><span class="sr-only">Формула‑1: </span>Сезон 2026</h1>
+        </div>
+        <div class="hero-gap" id="heroGap" aria-hidden="true" data-shown="119"><b data-val="119">+119</b><span>очк. отрыв лидера<small>Antonelli над Verstappen</small></span></div>
+        <div class="hero-meta" id="heroMeta"><p id="heroCopy">Позади <b>19</b> из 23 этапов, в розыгрыше ещё до 100 очков · Кубок конструкторов: <b>Mercedes</b></p></div>
+        <div class="hero-actions">
+          <button class="btn" data-go="standings">Турнирная таблица</button>
+          <button class="btn secondary" data-go="calendar">Календарь</button>
+          <button class="btn secondary" data-go="compare">Сравнить пилотов</button>
+        </div>
+      </div>
+      <div class="card hero-fight-card"><div class="hero-fight" id="heroFight"></div></div>
+    </div>
+
+    <section id="liveCard" class="card live-card" hidden aria-live="polite"></section>
+
+    <!-- Race Weekend Timetable: folded unless the race is within a week -->
+    <details class="weekend-fold" id="weekendFold">
+      <summary><span>Расписание сессий</span><small id="weekendFoldHint" class="subtle"></small></summary>
+      <div id="raceWeekendContainer"></div>
+    </details>
+
+    <div class="grid">
+      <div class="card col-12 fav-card" id="favCard"></div>
+      <div class="card col-7">
+        <h2>Чемпионат пилотов <a href="/f1-timeline/standings/" class="card-link" data-go="standings">вся таблица →</a></h2>
+        <div id="homeDrivers" class="table-wrap"><div class="loading">Загрузка таблицы…</div></div>
+      </div>
+      <div class="card col-5">
+        <h2>Предыдущий Гран-при</h2>
+        <div id="lastRace" class="empty">Определение результатов…</div>
+      </div>
+      <div class="card col-12">
+        <h2>Кубок конструкторов <a href="/f1-timeline/standings/" class="card-link" data-go="standings">вся таблица →</a></h2>
+        <div id="homeTeams" class="table-wrap"><div class="loading">Загрузка команд…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. STANDINGS -->
+  <section id="standings" class="panel">
+    <header class="page-head has-motif"><div><h2 class="page-title">Турнир</h2><p>Нажмите на строку, чтобы открыть карточку</p></div></header>
+    <div class="toolbar">
+      <select id="standingsSeason" class="select" aria-label="Выбрать сезон"></select>
+    </div>
+
+    <div class="card accent-card" id="standingsFightCard" style="margin-bottom:var(--gap)">
+      <div class="hero-fight big" id="standingsFight"><div class="loading">Загрузка этапов…</div></div>
+    </div>
+    <div class="card" id="posHistoryCard" style="margin-bottom:var(--gap)">
+      <h2>Динамика сезона <span class="subtle">место в зачёте после каждого этапа</span></h2>
+      <div id="posHistoryBox"><button class="btn secondary" id="posHistoryGo" type="button">Показать динамику сезона</button></div>
+    </div>
+    <div class="grid">
+      <div class="card col-7">
+        <h2>Личный зачёт <span id="standingsCaption" class="subtle cap"></span></h2>
+        <div id="driversTable" class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Пилот</th><th>Команда</th><th>Очки</th></tr></thead>
+            <tbody><tr><td colspan="4" class="loading">Загрузка пилотов…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card col-5">
+        <h2>Кубок Конструкторов</h2>
+        <div id="constructorsTable" class="table-wrap"><div class="loading">Загрузка команд…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. CALENDAR -->
+  <section id="calendar" class="panel">
+    <header class="page-head has-motif"><div><h2 class="page-title">Календарь</h2></div></header>
+    <div class="toolbar">
+      <select id="calendarSeason" class="select" aria-label="Выбрать сезон календаря"></select>
+      <button class="btn secondary" id="calendarIcs" title="Скачать расписание всех сессий в формате .ics для Google / Apple / Outlook календаря"><svg viewBox="0 0 24 24" width="16" height="16" style="display:inline-block;vertical-align:-2px;margin-right:6px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/></svg>В мой календарь (.ics)</button>
+      <a class="btn secondary" id="calendarSub" hidden href="#" title="Подписаться на расписание текущего сезона: календарь сам подхватит изменения"><svg viewBox="0 0 24 24" width="16" height="16" style="display:inline-block;vertical-align:-2px;margin-right:6px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>Подписаться на календарь</a>
+    </div>
+    <div class="card accent-card" id="seasonMapCard">
+      <h2>Карта сезона <span class="subtle cap" id="seasonMapCaption"></span></h2>
+      <div id="seasonMap" class="season-map"></div>
+    </div>
+    <div class="card">
+      <div id="seasonProgress"></div>
+      <div id="calendarFilters" class="calendar-filters" role="group" aria-label="Быстрые тактические фильтры календаря">
+        <button type="button" class="cal-filter-btn active" data-cal-filter="ALL" aria-pressed="true">Все (24)</button>
+        <button type="button" class="cal-filter-btn" data-cal-filter="SPRINT" aria-pressed="false">Спринты (6)</button>
+        <button type="button" class="cal-filter-btn" data-cal-filter="NIGHT" aria-pressed="false">Ночные гонки</button>
+        <button type="button" class="cal-filter-btn" data-cal-filter="EUROPE" aria-pressed="false">Европа</button>
+        <button type="button" class="cal-filter-btn" data-cal-filter="AMERICAS" aria-pressed="false">Америка</button>
+        <button type="button" class="cal-filter-btn" data-cal-filter="ASIA_ME" aria-pressed="false">Азия/Ближний Восток</button>
+      </div>
+      <div id="calendarList" class="race-list"><div class="loading">Загрузка календаря…</div></div>
+      <p class="subtle" id="calendarSubHint" hidden style="font-size:14px;line-height:1.55;margin-top:14px"></p>
+      <p class="subtle cal-note">Время — ваше местное.</p>
+    </div>
+  </section>
+
+  <!-- 4. CIRCUITS (CIRCUIT EXPLORER) -->
+  <section id="circuits" class="panel">
+    <header class="page-head has-motif"><div><h2 class="page-title">Трассы</h2></div></header>
+    <div class="toolbar">
+      <input id="circuitSearch" name="circuit-search" autocomplete="off" spellcheck="false" class="search" type="search" placeholder="Поиск автодрома…" aria-label="Поиск автодрома">
+      <select id="circuitSeasonFilter" class="select" aria-label="Фильтр по сезону"><option value="">Все сезоны</option></select>
+      <select id="circuitCountryFilter" class="select" aria-label="Фильтр по стране"><option value="">Все страны</option></select>
+    </div>
+    <div id="circuitCatalog" class="track-catalog"><div class="loading">Загрузка каталога автодромов…</div></div>
+  </section>
+
+  <!-- 5. DRIVERS -->
+  <section id="drivers" class="panel">
+    <header class="page-head has-motif"><div><h2 class="page-title">Пилоты</h2></div></header>
+    <div class="toolbar">
+      <input id="driverSearch" name="driver-search" autocomplete="off" spellcheck="false" class="search" type="search" placeholder="Поиск пилота…" aria-label="Поиск пилота">
+      <select id="driverSeason" class="select" aria-label="Выбрать сезон"></select>
+    </div>
+    <div id="driverGrid" class="driver-grid"><div class="loading">Загрузка пилотов…</div></div>
+  </section>
+
+  <!-- 6. TEAMS -->
+  <section id="teams" class="panel active">
+    <header class="page-head has-motif"><div><h2 class="page-title">Команды</h2></div></header>
+    <div class="toolbar">
+      <select id="teamSeason" class="select" aria-label="Выбрать сезон команд"></select>
+    </div>
+    <div id="teamGrid" class="driver-grid"><div class="loading">Загрузка команд…</div></div>
+    <div id="teamPitBox"></div>
+  </section>
+
+  <!-- 7. COMPARE -->
+  <section id="compare" class="panel">
+    <header class="page-head has-motif"><div><h2 class="page-title">Сравнение</h2></div></header>
+    <div class="toolbar">
+      <select id="compareSeason" class="select" aria-label="Сезон сравнения"></select>
+      <select id="compareA" class="select" aria-label="Первый пилот"><option value="" disabled selected>Первый пилот</option></select>
+      <button class="btn secondary" id="compareSwap" title="Поменять местами" aria-label="Поменять пилотов местами">⇄</button>
+      <select id="compareB" class="select" aria-label="Второй пилот"><option value="" disabled selected>Второй пилот</option></select>
+    </div>
+    <div id="compareResult" class="compare-accent"><div class="loading">Загрузка пилотов сезона…</div></div>
+  </section>
+
+  <!-- 8. MY -->
+  <section id="my" class="panel">
+    <header class="page-head has-motif"><div><h2 class="page-title">Моё</h2><p>Данные хранятся только в этом браузере</p></div></header>
+    <div class="grid">
+      <div class="card col-12 accent-card" id="myFavCard"></div>
+    </div>
+    <div class="my-stats" id="myStats"></div>
+    <div class="card" style="margin-bottom:var(--gap)">
+      <h2>Отметьте просмотренные гонки <select id="mySeason" class="select" aria-label="Сезон"></select></h2>
+      <div id="myChecklist" class="check-grid"><div class="loading">Загрузка гонок сезона…</div></div>
+    </div>
+    <div class="card"><h2>Мои гонки</h2><div id="myList"></div></div>
+  </section>
+
+  <!-- 9. HISTORY -->
+  <section id="history" class="panel">
+    <header class="page-head has-motif"><div><h2 class="page-title">История</h2></div></header>
+    <div class="toolbar">
+      <select id="historySeason" class="select" aria-label="Исторический сезон"></select>
+
+    </div>
+    <div class="champ-plaque" id="historyHall"><div class="hall-bg" aria-hidden="true"></div><div class="plaque-body"><div class="eyebrow">Чемпион мира 2026 · решено математически</div>
+      <div class="hall-name small"><span>Andrea Kimi</span><b>Antonelli</b></div>
+      <div class="hall-team">Mercedes · 380 очков · 9 побед</div><small class="hall-credit"></small></div></div>
+    <div class="card accent-card" style="margin-bottom:18px">
+      <h2>Чемпионы мира: с 1950 года</h2>
+      <div id="championsArchive"><div class="loading">Загрузка архива чемпионов…</div></div>
+    </div>
+    <div class="grid">
+      <div class="card col-7">
+        <h2>Итоговый зачёт сезона <span id="historyCaption" class="subtle cap"></span></h2>
+        <div id="historyTable" class="table-wrap"><div class="empty">Выберите сезон для загрузки.</div></div>
+      </div>
+      <div class="card col-5">
+        <h2>Чемпион мира</h2>
+        <div id="historyChampion" class="empty">…</div>
+        <div class="chart-box" style="margin-top:16px"><canvas id="historyChart" role="img" aria-label="График очков чемпионата"></canvas></div>
+        <h2 style="margin-top:18px">Кубок конструкторов</h2>
+        <div id="historyTeams" class="table-wrap"><div class="empty">Выберите сезон.</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div>
+      <span style="font-weight:700">F1 Timeline 2.0</span>
+      <span class="footer-links"><span>Источники:</span><a href="https://jolpi.ca/" target="_blank" rel="noopener noreferrer">Jolpica F1 API</a><a href="https://openf1.org/" target="_blank" rel="noopener noreferrer">OpenF1</a><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo (CC BY 4.0)</a><a href="https://www.wikipedia.org/" target="_blank" rel="noopener noreferrer">Wikipedia</a></span>
+    </div>
+    <div class="foot-keys">Горячие клавиши: <span class="kbd">1-9</span> вкладки · <span class="kbd">/</span> поиск · <span class="kbd">T</span> тема · <span class="kbd">Esc</span> закрыть окно</div>
+  </div>
+</footer>
+
+<!-- Modals & Toasts -->
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-head">
+      <div id="modalTitle"></div>
+      <button class="close mh-btn" id="modalShare" type="button" aria-label="Сохранить картинку" title="Сохранить картинку для отправки" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3L16 12l4 4.5"/></svg></button>
+      <button class="close mh-btn" id="modalLink" type="button" aria-label="Скопировать ссылку" title="Скопировать ссылку на это окно" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></button>
+      <button class="close" id="modalClose" aria-label="Закрыть окно">×</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div id="exportModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle" style="display:none;">
+  <div class="modal-box" style="max-width:540px;">
+    <div class="modal-head">
+      <div id="exportModalTitle" style="font-weight:700;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
+        <span>💾 Экспорт и автономная синхронизация</span>
+      </div>
+      <button class="close" id="exportModalClose" aria-label="Закрыть окно">×</button>
+    </div>
+    <div id="exportModalBody" style="padding:20px;font-size:0.92rem;line-height:1.6;color:var(--text);">
+      <p style="margin-bottom:12px;">Вы можете выгрузить обновлённый файл <b>f1_timeline.html</b>, в который будут навсегда вшиты все свежие результаты гонок, квалификаций и пит-стопов текущих сезонов из локального IndexedDB хранилища.</p>
+      <div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span>Вшито эндпоинтов в снапшот:</span>
+          <b id="exportStatEmbedded">…</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span>Свежих записей в IndexedDB:</span>
+          <b id="exportStatIdb" style="color:var(--green, #22c55e);">…</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Итого будет в новом файле:</span>
+          <b id="exportStatTotal" style="color:var(--accent, #e10600);">…</b>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn" id="exportModalCancelBtn" style="background:transparent;border:1px solid var(--border);color:inherit;">Отмена</button>
+        <button class="btn" id="exportModalDownloadBtn" style="background:var(--accent, #e10600);color:#fff;font-weight:700;">Скачать обновлённый HTML</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="healthPop" class="health-pop" role="dialog" aria-label="Состояние источников данных"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<div id="searchDialog" class="search-dialog" role="dialog" aria-modal="true" aria-label="Поиск" aria-hidden="true">
+  <div class="search-box">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.38A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/></svg>
+      <input id="searchInput" type="search" placeholder="Пилот, команда, трасса, Гран-при или раздел…" autocomplete="off" aria-label="Поисковый запрос">
+      <kbd>Esc</kbd>
+    </div>
+    <div id="searchResults" class="search-results"></div>
+  </div>
+</div>
+<nav id="bottomNav" class="bottom-nav" aria-label="Навигация">
+  <a href="/f1-timeline/" data-tab="home"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Обзор</a>
+  <a href="/f1-timeline/standings/" data-tab="standings"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.5 3.5"/><path d="M17 6h2.5A2.5 2.5 0 0 1 17 9.5"/><path d="M12 14v4"/><path d="M8.5 20h7"/></svg>Турнир</a>
+  <a href="/f1-timeline/calendar/" data-tab="calendar"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/></svg>Календарь</a>
+  <a href="/f1-timeline/drivers/" data-tab="drivers"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-4 3.5-6 7-6s6.2 2 7 6"/></svg>Пилоты</a>
+  <button id="bottomMore"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Ещё</button>
+</nav>
+<div id="moreSheet" class="more-sheet" aria-label="Другие разделы">
+  <div class="more-sheet-box">
+    <a href="/f1-timeline/circuits/" data-tab="circuits"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 5h11l-2 4 2 4H5"/></svg><span>Трассы</span></a>
+    <a href="/f1-timeline/teams/" data-tab="teams"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.2 7.8 8 9 4.8-1.2 8-4.5 8-9V6z"/></svg><span>Команды</span></a>
+    <a href="/f1-timeline/compare/" data-tab="compare"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 3 8l4 4"/><path d="M3 8h13"/><path d="m17 20 4-4-4-4"/><path d="M21 16H8"/></svg><span>Сравнение пилотов</span></a>
+    <a href="/f1-timeline/my/" data-tab="my"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span>Моё: избранное и гонки</span></a>
+    <a href="/f1-timeline/history/" data-tab="history"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg><span>История с 1950</span></a>
+  </div>
+</div>
+<script src="/f1-timeline/data/core.a530e58b83.js"></script>
+<script src="/f1-timeline/assets/app.1a6fc31758.js"></script>
+</body>
+</html>

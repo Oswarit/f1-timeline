@@ -1,0 +1,115 @@
+{
+  "name": "F1 Timeline",
+  "short_name": "F1 Timeline",
+  "description": "Формула‑1: зачёты, календарь, трассы, пилоты и команды. Неофициальное приложение на открытых данных Jolpica F1 и OpenF1.",
+  "lang": "ru",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08090b",
+  "theme_color": "#08090b",
+  "categories": [
+    "sports",
+    "news"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Турнир",
+      "short_name": "Турнир",
+      "description": "Личный и командный зачёты",
+      "url": "./standings/",
+      "icons": [
+        {
+          "src": "icons/shortcut-standings.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Календарь",
+      "short_name": "Календарь",
+      "description": "Этапы и время сессий",
+      "url": "./calendar/",
+      "icons": [
+        {
+          "src": "icons/shortcut-calendar.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Пилоты",
+      "short_name": "Пилоты",
+      "description": "Личные дела пилотов",
+      "url": "./drivers/",
+      "icons": [
+        {
+          "src": "icons/shortcut-drivers.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Моё",
+      "short_name": "Моё",
+      "description": "Избранные пилоты и команды",
+      "url": "./my/",
+      "icons": [
+        {
+          "src": "icons/shortcut-my.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screens/phone-home.webp",
+      "sizes": "1170x2532",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Главная: следующий этап и чемпион сезона"
+    },
+    {
+      "src": "screens/phone-standings.webp",
+      "sizes": "1170x2532",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Турнир: борьба за титул"
+    },
+    {
+      "src": "screens/wide-home.webp",
+      "sizes": "1440x900",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Главная на компьютере"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://oswarit.github.io/f1-timeline/sitemap.xml
