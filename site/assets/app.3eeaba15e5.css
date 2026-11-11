@@ -1608,12 +1608,12 @@ tbody tr:active {
   margin-bottom: 6px;
 }
 .record-time {
-  font-family: var(--font-mono);
-  font-size: var(--fs-24);
-  font-weight: 800;
+  font: 900 var(--fs-28)/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
   color: var(--text-bright);
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
 }
+.record-k { display: block; font: 700 var(--fs-12)/1.2 var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .record-driver {
   font-size: var(--fs-13);
   font-weight: 600;
@@ -2976,6 +2976,12 @@ html.theme-fade *, html.theme-fade *::before, html.theme-fade *::after { transit
 .last-podium:empty { display: none; }
 .last-podium { margin-top: 14px; }
 .last-podium .pod-1 { min-height: 132px; } .last-podium .pod-2 { min-height: 110px; } .last-podium .pod-3 { min-height: 108px; }
+/* победитель выше остальных и на телефоне: высота ступеней считается от высоты содержимого (фото, имя, команда, время ≈ 134px) */
+.last-podium .podium { align-items: end; }
+.last-podium .pod-1 { min-height: 164px; box-shadow: 0 -10px 26px -14px var(--tc); }
+.last-podium .pod-2 { min-height: 144px; }
+.last-podium .pod-3 { min-height: 134px; }
+.last-podium .pod-1 .pod-ph { width: 64px; height: 64px; }
 .last-podium .pod-num { font-size: var(--fs-40); }
 .last-podium .pod-3 .pod-num { opacity: 0.22; pointer-events: none; }
 #circuits .hero > .hero-card { display: flex; align-items: center; }
@@ -4679,9 +4685,17 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 /* перелёт фото из списка в шапку окна */
 .photo-flight { position: fixed; z-index: 5000; margin: 0; pointer-events: none; will-change: left, top, width, height; }
 .flight-hide { visibility: hidden !important; }
+/* руководство на карточках «Команд» — такие же кружки, как в окне команды, в цветах карточки */
+.team-card .leaders { gap: 6px; align-items: flex-start; }
+.team-card .lp-chip { --tp: var(--team, var(--red)); background: var(--panel2); color: var(--text); border-color: color-mix(in srgb, var(--team, var(--red)) 45%, transparent); }
+.team-card .lp-tx b { color: var(--text); }
+.team-card .lp-tx small { color: var(--muted); }
 /* «Что изменилось после гонки» */
-.rc-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 12px; }
-.rc-head h2 { margin: 0; }
+/* длинный заголовок переносится внутри строки, красная метка остаётся рядом с ним */
+.race-changes-card h2 { flex-wrap: nowrap !important; justify-content: flex-start; }
+.race-changes-card .rc-title { min-width: 0; }
+.race-changes-card .rc-title .cap { font: 600 var(--fs-13)/1.3 var(--font-body); color: var(--muted); letter-spacing: 0; text-transform: none; }
+@media (max-width: 560px) { .race-changes-card .rc-title .cap { display: block; margin-top: 2px; } }
 .rc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .rc-tile, .rc-col { min-width: 0; padding: 12px 14px; border-radius: var(--r-sm); background: var(--panel2); }
 .rc-k { display: block; font: 700 var(--fs-12)/1.2 var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
@@ -4701,6 +4715,8 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 .dp-compare:hover { border-color: var(--tp); background: color-mix(in srgb, var(--tp) 22%, rgba(10, 12, 17, .55)); }
 .dp-compare:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 @media (pointer: coarse) { .dp-compare { min-height: 44px; } }
+/* окна гонки и трассы: у окна отступ 20px, вкладки прилипают к самому верху, иначе над ними просвечивает содержимое */
+@media (min-width: 769px) { .modal:not(.dossier) .modal-box .modal-tabs { top: -20px; } }
 /* «Пилоты»: фильтра команд нет, выбор сезона крупнее на освободившемся месте */
 #drivers .toolbar #driverSeason { flex: 0 0 220px; min-height: 48px; padding-left: 16px; font: 800 var(--fs-18)/1 var(--font-display); letter-spacing: .02em; }
 @media (max-width: 720px) { #drivers .toolbar .search { flex: 1 1 52%; } #drivers .toolbar #driverSeason { flex: 1 1 40%; } }
@@ -4708,7 +4724,7 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 .modal.dossier .dp .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px; }
 .modal.dossier .dp .stat { padding: 10px 10px; min-width: 0; }
 .modal.dossier .dp .stat b { font-size: var(--fs-20); }
-.modal.dossier .dp .stat span { overflow-wrap: anywhere; }
+.modal.dossier .dp .stat span { overflow-wrap: break-word; }
 @media (min-width: 721px) { .modal.dossier .dp .stat-grid { grid-template-columns: repeat(8, minmax(0, 1fr)) !important; } }
 /* шапка чемпиона: текст поверх слоя с фото чемпиона, а не под ним */
 .dp-hero.is-champion > .dp-id, .dp-hero.is-champion > .dp-signature { z-index: 3; }

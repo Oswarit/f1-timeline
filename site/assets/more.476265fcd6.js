@@ -19,37 +19,13 @@ function generateRaceStory(results, qualifying) {
   return `
     <div class="race-story-grid">
       <div class="story-card">
-        <div class="story-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5A2.5 2.5 0 0 0 7 9.5"/><path d="M17 6h2.5A2.5 2.5 0 0 1 17 9.5"/><path d="M12 14v4"/><path d="M8.5 20h7"/></svg></div>
-        <div class="story-label">Победитель Гран-при</div>
-        <div class="story-val">${esc(driverName(winner.Driver))}</div>
-        <div class="story-sub">${esc(winner.Constructor?.name || '')} · ${esc(winner.Time?.time || 'Финиш')}</div>
-      </div>
-      <div class="story-card">
-        <div class="story-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></div>
-        <div class="story-label">Прорыв гонки</div>
-        <div class="story-val">${biggestGain ? `P${biggestGain.grid} → P${biggestGain.pos}` : 'Без прорывов'}</div>
-        <div class="story-sub">${biggestGain ? `${esc(driverName(biggestGain.driver))} (+${biggestGain.delta} поз.)` : 'Лидеры удержали позиции'}</div>
-      </div>
-      <div class="story-card">
-        <div class="story-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10"/><path d="M17 8v9H8"/></svg></div>
-        <div class="story-label">Главная потеря</div>
-        <div class="story-val">${biggestDrop ? `P${biggestDrop.grid} → P${biggestDrop.pos}` : 'Стабильно'}</div>
-        <div class="story-sub">${biggestDrop ? `${esc(driverName(biggestDrop.driver))} (${biggestDrop.delta} поз.)` : 'Без резких падений'}</div>
-      </div>
-      <div class="story-card">
-        <div class="story-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg></div>
-        <div class="story-label">Быстрый круг</div>
-        <div class="story-val">${fastest ? esc(fastest.FastestLap?.Time?.time || '—') : '—'}</div>
-        <div class="story-sub">${fastest ? `${esc(driverName(fastest.Driver))} (круг ${fastest.FastestLap?.lap || '—'})` : 'Данные круга недоступны'}</div>
-      </div>
-      <div class="story-card">
-        <div class="story-icon">💥</div>
+        <div class="story-icon">${uiIcon('crash')}</div>
         <div class="story-label">Сходы (DNF)</div>
-        <div class="story-val">${dnfs.length} ${dnfs.length === 1 ? 'болид' : 'болида(-ов)'}</div>
+        <div class="story-val">${dnfs.length} ${ruPlural(dnfs.length, ['болид', 'болида', 'болидов'])}</div>
         <div class="story-sub">${dnfs.map(d => `${esc(d.Driver?.code || d.Driver?.familyName || '—')} (${esc(d.status || 'DNF')})`).slice(0, 3).join(', ') || 'Все пилоты финишировали'}</div>
       </div>
       <div class="story-card">
-        <div class="story-icon">🏁</div>
+        <div class="story-icon">${uiIcon('finish')}</div>
         <div class="story-label">Чемпионский задел</div>
         <div class="story-val">+${fmtNum(winner.points)} ${ruPlural(winner.points, ['очко', 'очка', 'очков'])}</div>
         <div class="story-sub">Максимум очков у победителя этапа</div>
@@ -367,7 +343,7 @@ async function fillTeamSeasonPane(id, season, races, standing) {
         <thead><tr><th>Этап</th><th>Гран-при</th><th>Финиш машин</th><th class="num">Очки</th></tr></thead>
         <tbody>${st.rows.map(r => `<tr data-race="${esc(r.round)}" data-season="${esc(season)}" tabindex="0">
           <td>${esc(r.round)}</td>
-          <td><b>${esc(String(r.raceName || '').replace(' Grand Prix', ''))}</b></td>
+          <td><b>${esc(ruGP(r.raceName, true))}</b></td>
           <td>${r.cars.map(c => `<span class="car-fin" title="${esc(c.name)}"><i>${esc(c.code || c.name.slice(0, 3).toUpperCase())}</i> <span class="pos-badge ${c.pos === 1 ? 'p1' : c.pos === 2 ? 'p2' : c.pos === 3 ? 'p3' : ''}">${c.dnf ? '✕' : c.pos}</span></span>`).join(' ')}</td>
           <td class="num"><b>${fmtNum(r.points)}</b></td>
         </tr>`).join('')}</tbody></table></div>
@@ -419,7 +395,7 @@ async function fillTeamHistoryPane(id, c, pal) {
     box.innerHTML = `
       <div class="dp-titles ${h.titles.length ? 'has' : ''}">
         ${h.titles.length
-          ? `<span class="dp-trophy">🏆</span><div><b>${h.titles.length}× чемпион конструкторов</b><small>${h.titles.join(' · ')}</small></div>`
+          ? `<span class="dp-trophy">${uiIcon('trophy')}</span><div><b>${h.titles.length}× чемпион конструкторов</b><small>${h.titles.join(' · ')}</small></div>`
           : `<div><b>В Формуле‑1 с ${h.first} года</b><small>${h.seasons} ${ruPlural(h.seasons, ['сезон', 'сезона', 'сезонов'])} в чемпионате под названием «${esc(c.name)}»</small></div>`}
       </div>
       <div class="stat-grid dp-totals">
@@ -435,7 +411,7 @@ async function fillTeamHistoryPane(id, c, pal) {
         <thead><tr><th>Сезон</th><th class="num">Место</th><th class="num">Очки</th><th class="num col-wins">Победы</th></tr></thead>
         <tbody>${h.recent.slice().reverse().map(s => `<tr class="${s.pos === 1 ? 'champ-row' : ''}" data-team="${esc(id)}" data-season="${s.season}" tabindex="0">
           <td><b>${s.season}</b></td>
-          <td class="num">${s.pos === 1 ? '🏆 ' : ''}${s.pos ? 'P' + s.pos : '—'}</td>
+          <td class="num">${s.pos === 1 ? uiIcon('trophy') + ' ' : ''}${s.pos ? 'P' + s.pos : '—'}</td>
           <td class="num"><b>${fmtNum(s.pts)}</b></td>
           <td class="num col-wins">${fmtNum(s.wins)}</td>
         </tr>`).join('')}</tbody></table></div>` : ''}
@@ -556,18 +532,21 @@ async function showCircuit(id) {
                       (entry.recordHolder && entry.recordHolder.toLowerCase().includes('projected'));
   const isSimQual = (entry.allTimeRecordProvenance === 'SIMULATION') ||
                     (entry.allTimeRecord && entry.allTimeRecord.toLowerCase().includes('simulat'));
+  // рекорд квалификации записан одной строкой «1:15.915, пилот (команда, год)»: время и пилот показываются отдельно, как у рекорда гонки
+  const qm = /^\s*([\d:.]+)\s*,\s*(.+)$/.exec(String(entry.allTimeRecord || ''));
+  const qTime = qm ? qm[1] : (entry.allTimeRecord || '—'), qWho = qm ? qm[2] : '';
   const recordsCardHtml = `
     <div class="circuit-records-card">
       <div class="record-item">
-        <span class="record-title"><span class="prov-badge ${isSimRecord ? 'prov-demo' : 'prov-hist'}">${isSimRecord ? 'ПРОЕКТНАЯ СИМУЛЯЦИЯ РЕКОРДА' : 'ОФИЦИАЛЬНЫЙ РЕКОРД КРУГА В ГОНКЕ'}</span></span>
+        <span class="record-title">${isSimRecord ? '<span class="prov-badge prov-demo">ПРОЕКТНАЯ СИМУЛЯЦИЯ РЕКОРДА</span>' : '<span class="record-k">Рекорд круга в гонке</span>'}</span>
         <div class="record-time">${esc(entry.lapRecord || '—')}</div>
-        <div class="record-driver">${esc(entry.recordHolder || 'N/A')} <span class="subtle">(${esc(entry.recordTeam || '')}, ${entry.recordYear || ''})</span></div>
-        <div class="record-session subtle">${esc(entry.recordSession || 'Race Lap Record')}</div>
+        <div class="record-driver">${esc(entry.recordHolder || 'Нет данных')}${entry.recordTeam || entry.recordYear ? ` <span class="subtle">· ${esc([entry.recordTeam, entry.recordYear].filter(Boolean).join(', '))}</span>` : ''}</div>
       </div>
       <div class="record-item">
-        <span class="record-title"><span class="prov-badge ${isSimQual ? 'prov-sim' : 'prov-hist'}">${isSimQual ? 'ПРОЕКТНАЯ СИМУЛЯЦИЯ ПОУЛА' : 'РЕКОРД КВАЛИФИКАЦИИ / ПОУЛ'}</span></span>
-        <div class="record-time" style="font-size:1.15rem;color:var(--gold);margin-top:4px">${esc(entry.allTimeRecord || '—')}</div>
-        <div class="record-session subtle">Абсолютный рекорд текущей конфигурации</div>
+        <span class="record-title">${isSimQual ? '<span class="prov-badge prov-sim">ПРОЕКТНАЯ СИМУЛЯЦИЯ ПОУЛА</span>' : '<span class="record-k">Рекорд квалификации</span>'}</span>
+        <div class="record-time">${esc(qTime)}</div>
+        ${qWho ? `<div class="record-driver">${esc(qWho)}</div>` : ''}
+        <div class="record-session subtle">Текущая конфигурация трассы</div>
       </div>
     </div>
   `;
@@ -702,7 +681,7 @@ async function loadCircuitHistoryUI(canonId) {
         <b class="history-year">${esc(r.season)}</b>
         <div class="history-main">
           <strong>${esc(ruGP(r.raceName))}</strong>
-          <div class="subtle" style="font-size:12px">${winner ? `🏆 ${esc(driverName(winner.Driver))} · ${esc(winner.Constructor?.name || '—')}` : 'Результат не опубликован'}</div>
+          <div class="subtle" style="font-size:12px">${winner ? `${uiIcon('trophy')} ${esc(driverName(winner.Driver))} · ${esc(winner.Constructor?.name || '—')}` : 'Результат не опубликован'}</div>
         </div>
         ${Number(r.season) >= 1950 ? `<button class="btn secondary sm" data-race="${esc(r.round)}" data-season="${esc(r.season)}">Открыть</button>` : ''}
       </div>`;
@@ -993,7 +972,7 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
 
             <div class="driver-progression-box">
         <div class="section-header-compact">
-          <h3 class="h4">📈 Динамика по сезонам <span class="prov-badge prov-api">JOLPICA F1</span></h3>
+          <h3 class="h4">${uiIcon('chart')} Динамика по сезонам <span class="prov-badge prov-api">JOLPICA F1</span></h3>
           <div class="prog-tabs">
             <button class="prog-tab-btn active" data-metric="points">Очки</button>
             <button class="prog-tab-btn" data-metric="position">Место в зачете</button>
@@ -1226,7 +1205,7 @@ function renderRaceTimelineHtml(events = [], circuitId = '') {
       </div>
       <div class="timeline-filter-bar" id="timelineFilters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
         <button class="timeline-filter-btn active btn secondary sm" data-filter="ALL">Все (${events.length})</button>
-        ${rcEvents.length ? `<button class="timeline-filter-btn btn secondary sm" data-filter="RC">🚩 Дирекция / Флаги (${rcEvents.length})</button>` : ''}
+        ${rcEvents.length ? `<button class="timeline-filter-btn btn secondary sm" data-filter="RC">${uiIcon('flag')} Дирекция / Флаги (${rcEvents.length})</button>` : ''}
         ${scEvents.length ? `<button class="timeline-filter-btn btn secondary sm" data-filter="SC"><span class="pill t-badge-sc" style="font-size:12px;padding:1px 5px">SC</span> (${scEvents.length})</button>` : ''}
         ${vscEvents.length ? `<button class="timeline-filter-btn btn secondary sm" data-filter="VSC"><span class="pill t-badge-vsc" style="font-size:12px;padding:1px 5px">VSC</span> (${vscEvents.length})</button>` : ''}
         ${redEvents.length ? `<button class="timeline-filter-btn btn secondary sm" data-filter="RED"><span class="pill t-badge-red" style="font-size:12px;padding:1px 5px">RED</span> (${redEvents.length})</button>` : ''}
@@ -1251,7 +1230,7 @@ function renderRaceTimelineHtml(events = [], circuitId = '') {
               <div style="font-weight:700;font-size:13px">${esc(ev.title)}</div>
               <div class="subtle" style="font-size:12px">${esc(ev.desc)}</div>
             </div>
-            <span class="subtle" style="font-size:12px">${ev.locationStatus === 'DERIVED REPLAY POSITION' ? '📍 Пит-лейн' : '📍 N/A'}</span>
+            <span class="subtle" style="font-size:12px">${ev.locationStatus === 'DERIVED REPLAY POSITION' ? `${uiIcon('pin')} Пит-лейн` : `${uiIcon('pin')} N/A`}</span>
           </div>
         `).join('')}
       </div>
@@ -1511,7 +1490,7 @@ async function showRace(round, season = state.season) {
                : `<div class="error-box" style="margin-top:16px">
                     <span class="prov-badge prov-unavail">ДАННЫЕ НЕ ЗАГРУЖЕНЫ</span>
                     <p style="margin:8px 0 0">Не удалось загрузить результаты и телеметрию гонки (автономный режим или сбой сети).</p>
-                    <button class="btn secondary" id="btnRetryRaceModal" style="margin-top:10px;font-size:12px;padding:6px 14px">🔄 Повторить загрузку</button>
+                    <button class="btn secondary" id="btnRetryRaceModal" style="margin-top:10px;font-size:12px;padding:6px 14px">${uiIcon('refresh')} Повторить загрузку</button>
                   </div>`;
 
     const qualTableHtml = qualifying.length ? `
@@ -1929,7 +1908,7 @@ async function loadHistory({ signal = null } = {}) {
       <div style="display:flex;align-items:center;gap:14px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)">
         <div class="avatar" style="width:64px;height:64px;font-size:1.3rem" data-wiki="${esc(champ.Driver.url || '')}">${esc((champ.Driver.givenName || '?')[0])}${esc((champ.Driver.familyName || '?')[0])}</div>
         <div>
-          <div class="eyebrow" style="color:var(--gold)">${season < CURRENT_SEASON ? `🏆 ЧЕМПИОН МИРА ${season}` : `ЛИДЕР СЕЗОНА ${season}`}</div>
+          <div class="eyebrow" style="color:var(--gold)">${season < CURRENT_SEASON ? `${uiIcon('trophy')} ЧЕМПИОН МИРА ${season}` : `ЛИДЕР СЕЗОНА ${season}`}</div>
           <h3 style="margin:2px 0">${esc(driverName(champ.Driver))}</h3>
           <p class="subtle" style="margin:0">${fmtNum(champ.points)} ${ruPlural(champ.points, ['очко', 'очка', 'очков'])} · ${esc(champ.Constructors?.[0]?.name || '—')}</p>
         </div>
@@ -2153,7 +2132,7 @@ async function loadCircuitWeatherUI(lat, lon, containerId, date = null, session 
 
   box.innerHTML = `
     <div class="section-header-compact">
-      <h3 class="h4">🌤️ Метеоусловия автодрома · ${esc(w.termLabel)} ${provBadge}</h3>
+      <h3 class="h4">${uiIcon('weather')} Метеоусловия автодрома · ${esc(w.termLabel)} ${provBadge}</h3>
       <span class="subtle" style="font-size:12px">Open-Meteo · T_track расчёт по солнечной радиации и замерам</span>
     </div>
     <div class="weather-grid">
@@ -2366,7 +2345,7 @@ async function renderRaceWeather(season, race, containerId) {
   const range = (s, unit) => s ? `${s.min.toFixed(0)}–${s.max.toFixed(0)}${unit}` : 'Н/Д';
   box.innerHTML = `
     <div class="section-header-compact">
-      <h3 class="h4">🌤️ Погода во время гонки</h3>
+      <h3 class="h4">${uiIcon('weather')} Погода во время гонки</h3>
       <span class="subtle" style="font-size:12px">Замеры на трассе · OpenF1</span>
     </div>
     <div class="weather-grid">
@@ -3217,7 +3196,7 @@ function renderCareerPane(box, career, pal) {
   box.innerHTML = `
     <div class="dp-titles ${career.titles.length ? 'has' : ''}">
       ${career.titles.length
-        ? `<span class="dp-trophy">🏆</span><div><b>${career.titles.length}× чемпион мира</b><small>${career.titles.join(' · ')}</small></div>`
+        ? `<span class="dp-trophy">${uiIcon('trophy')}</span><div><b>${career.titles.length}× чемпион мира</b><small>${career.titles.join(' · ')}</small></div>`
         : `<div><b>Дебют в Формуле‑1: ${career.debut}</b><small>${career.seasons.length} ${ruPlural(career.seasons.length, ['сезон', 'сезона', 'сезонов'])} в чемпионате</small></div>`}
     </div>
     <div class="stat-grid dp-totals">
@@ -3236,7 +3215,7 @@ function renderCareerPane(box, career, pal) {
         return `<tr class="${s.pos === 1 ? 'champ-row' : ''}">
           <td><b>${s.season}</b></td>
           <td><div class="team-cell"><span class="team-livery-bar" style="background:${color}"></span>${esc(s.team)}</div></td>
-          <td class="num">${s.pos === 1 ? '🏆 ' : ''}${s.pos ? 'P' + s.pos : '—'}</td>
+          <td class="num">${s.pos === 1 ? uiIcon('trophy') + ' ' : ''}${s.pos ? 'P' + s.pos : '—'}</td>
           <td class="num"><b>${s.pts !== null ? fmtNum(s.pts) : '—'}</b></td>
           <td class="num col-wins">${s.wins !== null ? fmtNum(s.wins) : '—'}</td>
         </tr>`;
@@ -3300,7 +3279,7 @@ function seasonLogHtml(raceResults, qualResults) {
       const delta = !dnf && grid ? grid - pos : null;
       return `<tr data-race="${esc(r.round)}" data-season="${esc(r.season || state.season)}" tabindex="0">
         <td>${esc(r.round)}</td>
-        <td><b>${esc(String(r.raceName || '').replace(' Grand Prix', ''))}</b></td>
+        <td><b>${esc(ruGP(r.raceName, true))}</b></td>
         <td class="num">${qualBy[r.round] ? 'P' + esc(qualBy[r.round].position) : '—'}</td>
         <td class="num">${grid ? 'P' + grid : 'pit'}</td>
         <td class="num"><span class="pos-badge ${pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : ''}">${dnf ? '✕' : pos}</span>${delta ? `<small class="delta ${delta > 0 ? 'up' : 'down'}">${delta > 0 ? '▲' : '▼'}${Math.abs(delta)}</small>` : ''}</td>
@@ -3368,7 +3347,7 @@ async function loadMyPage() {
     <div class="history-row" data-race="${d.round}" data-season="${d.season}" role="button" tabindex="0">
       <b class="history-year">${d.season}</b>
       <div class="history-main"><strong>${esc(d.race.raceName)}</strong>
-        <div class="subtle" style="font-size:12px">${d.winner ? `🏆 ${esc(driverName(d.winner.Driver))} · ${esc(d.winner.Constructor?.name || '')}` : 'Результат не опубликован'}</div></div>
+        <div class="subtle" style="font-size:12px">${d.winner ? `${uiIcon('trophy')} ${esc(driverName(d.winner.Driver))} · ${esc(d.winner.Constructor?.name || '')}` : 'Результат не опубликован'}</div></div>
       <button class="check-chip on" data-watch="${d.key}" aria-label="Убрать отметку" title="Убрать отметку">✓</button>
     </div>`).join('')}</div>`;
 }
