@@ -952,12 +952,19 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
     await headshotsReady;
     if (modalCtrl?.signal?.aborted || !$('#modal')?.classList.contains('open')) return;
     const photo = Headshots.url(driverObj.code, 4);
-    const car = teamCarUrl(current?.Constructors?.[0] || raceResults[0]?.Constructor, targetSeason);
+    // напарник: другой пилот той же команды в зачёте сезона (у кого больше очков, если их несколько)
+    const teamId = current?.Constructors?.[0]?.constructorId;
+    const mate = teamId ? (bundle?.drivers || []).find(x => x.Driver?.driverId !== driverObj.driverId && x.Constructors?.[0]?.constructorId === teamId)?.Driver || null : null;
+    const canCompare = Boolean(current && bundle?.drivers?.length > 1);
+    // фото болида команды для фона шапки: только на сайте и только для своего сезона (scripts/build_car_photos.py)
+    const carSet = SITE?.cars?.[String(targetSeason)];
+    const carPick = teamId && carSet?.cars?.[teamId];
+    const carBg = carPick ? { src: `${SITE.base}${carSet.dir}${teamId}-1280.webp`, small: `${SITE.base}${carSet.dir}${teamId}-640.webp`, ...carPick } : null;
     const keep = silent ? { top: $('#modalBox')?.scrollTop || 0, pane: $('#modalBody .modal-tab.active')?.dataset.pane } : null;
     openModal(
       `<h2>${esc(driverName(driverObj))}</h2><p class="subtle">${esc(teamName)} · Сезон ${targetSeason}</p>`,
       `<div class="dp" style="--tp:${pal.p};--ts:${pal.s};--ta:${pal.a};--tc:${pal.tc}">
-      ${driverHeroHtml({ d: driverObj, teamName, pal, season: targetSeason, trait, favId: driverObj.driverId || id, photo, car })}
+      ${driverHeroHtml({ d: driverObj, teamName, pal, season: targetSeason, trait, favId: driverObj.driverId || id, photo, carBg, mate, compare: canCompare })}
       <div class="modal-tabs" role="tablist">
         <button class="modal-tab active" role="tab" data-pane="overview">Сезон ${targetSeason}</button>
         <button class="modal-tab" role="tab" data-pane="log">Этапы</button>
@@ -1004,6 +1011,8 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
     );
     $('#modal')?.classList.add('dossier');
     ChampionHall.decorateDossier();
+    $('#modalBody .dp-compare')?.addEventListener('click', e => compareWith(driverObj.driverId, targetSeason, e.currentTarget.dataset.compareMate || null));
+    if (!silent) PhotoFlight.land($('#modalBody .dp-hero .dp-photo'), 'driver');
     if (!photo) upgradeHeroPhoto(driverObj);
     const dossierBox = $('#modalBox');
     if (dossierBox) dossierBox.scrollTop = 0;
@@ -1101,6 +1110,7 @@ async function showTeam(id, season = state.season) {
     $('#modal')?.classList.add('dossier');
     const box = $('#modalBox');
     if (box) box.scrollTop = 0;
+    PhotoFlight.land($('#modalBody .team-hero .team-logo img'), 'team');
 
     initModalTabs($('#modalBody'), {
       overview: () => { fillTeamSeasonPane(id, targetSeason, races, t); fillTeamLeadersPane(id, targetSeason); },
@@ -2903,6 +2913,25 @@ function driverSeasonMetrics(rounds) {
   };
 }
 
+function afterModalClosed() {
+  return new Promise(resolve => {
+    if (!window._modalBackPending) return resolve();
+    const done = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(done, 500);
+    window.addEventListener('popstate', () => setTimeout(done, 0), { once: true });
+  });
+}
+
+async function compareWith(a, season, b = null) {
+  state.comparePreset = { season: Number(season), a, b };
+  setPageSeason('compare', Number(season));
+  const sel = $('#compareSeason');
+  if (sel) sel.value = String(season);
+  closeModal();
+  await afterModalClosed();
+  if (state.tab === 'compare') loadComparePage(); else switchTab('compare');
+}
+
 async function renderComparison() {
   if (ChartLib.waiting()) await ChartLib.load();
   const ctx = state.pageData.compare;
@@ -3221,7 +3250,7 @@ function traitIcon(id) {
   return `<svg class="tt-ic" viewBox="0 0 24 24" aria-hidden="true">${TRAIT_ICONS[id] || TRAIT_ICONS.points}</svg>`;
 }
 
-function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, car = null }) {
+function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, carBg = null, mate = null, compare = false }) {
   const flag = flagOf(d.nationality);
   const age = ageFrom(d.dateOfBirth);
   const num = d.permanentNumber || '';
@@ -3229,12 +3258,14 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
   const titles = ChampionHall.allTitles(d.driverId);
   const reigning = ChampionHall.current();
   const isReigning = reigning && reigning.row.Driver.driverId === d.driverId;
-  return `<div class="dp-hero${photo ? ' has-photo' : ''}${isReigning ? ' is-champion' : ''}">
+  // фото болида команды (Wikimedia Commons) фоном шапки; у действующего чемпиона фон — фото зала, болид не нужен
+  const bg = isReigning ? null : carBg;
+  return `<div class="dp-hero${photo ? ' has-photo' : ''}${isReigning ? ' is-champion' : ''}${bg ? ' has-carbg' : ''}">
     ${isReigning ? '<div class="hall-bg dp-hall" aria-hidden="true"></div>' : ''}
+    ${bg ? `<div class="dp-carbg" aria-hidden="true"><img class="${LoadedImgs.has(bg.small) ? 'loaded' : ''}" src="${esc(bg.small)}" srcset="${esc(bg.small)} 640w, ${esc(bg.src)} 1280w" sizes="(max-width: 720px) 100vw, 920px" alt="" decoding="async"><b></b><i></i></div>` : ''}
     <span class="hud-corner tl" aria-hidden="true"></span><span class="hud-corner tr" aria-hidden="true"></span><span class="hud-corner bl" aria-hidden="true"></span><span class="hud-corner br" aria-hidden="true"></span>
     <span class="dp-stripe"></span>
     ${num ? `<div class="dp-bignum" aria-hidden="true">${esc(num)}</div>` : ''}
-    ${car ? `<img class="dp-car" src="${esc(car)}" alt="" width="640" height="224" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
     ${photo ? `<img class="dp-photo${LoadedImgs.has(photo) ? ' loaded' : ''}" src="${photo}" alt="${esc(driverName(d))}" width="432" height="540" fetchpriority="high" referrerpolicy="no-referrer" onerror="this.remove();this.closest('.dp-hero')?.classList.remove('has-photo')">` : ''}
     <div class="dp-id">
       ${photo ? '' : `<div class="avatar dp-avatar" data-wiki="${esc(d.url || '')}">${esc(initials)}</div>`}
@@ -3242,6 +3273,7 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
         <div class="dp-team"><i></i>${esc(teamName)} · сезон ${season}</div>
         <h2><span>${esc(d.givenName || '')}</span>${esc(d.familyName || '')}</h2>
         <div class="dp-meta">${flag ? `<span class="dp-flag">${flag}</span>` : ''}${esc(ruNat(d.nationality) || '')}${age !== null ? ` · ${age} ${ruPlural(age, ['год', 'года', 'лет'])} (${esc(d.dateOfBirth)})` : ''}<span id="dpDebut"></span></div>
+        ${compare ? `<button type="button" class="dp-compare" data-compare-mate="${esc(mate?.driverId || '')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>${mate ? `Сравнить с ${esc(mate.familyName || driverName(mate))}` : 'Сравнить с пилотом'}</button>` : ''}
         ${titles.length ? `<div class="dp-titles" title="Титулы чемпиона мира: архив чемпионов Jolpica${isReigning && !reigning.final ? '; последний решён математически' : ''}"><b>${titles.length > 1 ? `${titles.length}× ч` : 'Ч'}емпион мира</b><small>${titles.map(esc).join(' · ')}</small></div>` : ''}
       </div>
     </div>
@@ -3250,6 +3282,7 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
       ${num ? `<div class="dp-plate" title="Гоночный номер"><small>№</small><b>${esc(num)}</b></div>` : ''}
       ${(trait?.list || []).map(t => `<div class="dp-trait" title="${esc(`${t.rank}-е место среди пилотов сезона по результатам ${trait.rounds} ${ruPlural(trait.rounds, ['этапа', 'этапов', 'этапов'])}`)}">${traitIcon(t.id)}<b>${t.rank}-й</b><span class="tt-name">${esc(t.name)}</span><small>${esc(t.text)}</small></div>`).join('')}
     </div>
+    ${bg ? `<small class="dp-carbg-credit"><button type="button" class="info-tip info-tip-text" aria-label="Фото болида: автор и лицензия" aria-expanded="false">Фото: Wikimedia Commons <span aria-hidden="true">i</span></button><span class="info-tip-body" hidden><a href="${esc(bg.source)}" target="_blank" rel="noopener noreferrer">${esc(bg.author)} · ${esc(bg.licence)}</a></span></small>` : ''}
     <div class="dp-palette" title="Палитра команды ${esc(teamName)}"><i style="background:${pal.p}"></i><i style="background:${pal.s}"></i><i style="background:${pal.a}"></i></div>
   </div>`;
 }

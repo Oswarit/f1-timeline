@@ -4643,11 +4643,20 @@ body.sheet-open { overflow: hidden; }
     linear-gradient(125deg, color-mix(in srgb, var(--ts) 88%, var(--tp)) 0%, color-mix(in srgb, var(--ts) 62%, #0b0d11) 58%, color-mix(in srgb, var(--ts) 82%, #0b0d11) 100%);
 }
 .dp-photo { filter: none; transform: translateZ(0); backface-visibility: hidden; }
-.dp-hero:not(.team-hero) .dp-car { right: 15%; bottom: 8px; width: 40%; height: auto; max-height: none; opacity: .9; filter: none;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 34%); mask-image: linear-gradient(to right, transparent 0%, #000 34%);
-  -webkit-mask-composite: source-over; mask-composite: add; transform: translateZ(0); }
-.dp-hero:not(.team-hero):not(.has-photo) .dp-car { right: -8px; width: 46%; }
-@media (max-width: 720px) { .dp-hero:not(.team-hero) .dp-car { display: none; } }
+/* фон шапки пилота — фото болида команды: серое, тонировано цветом команды, слева затемнено под текст (как в зале чемпиона) */
+.dp-carbg { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; border-radius: inherit; isolation: isolate; }
+.dp-carbg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%; filter: grayscale(1) contrast(1.12) brightness(.82); opacity: 0; transition: opacity .6s ease; }
+.dp-carbg img.loaded { opacity: .62; }
+.dp-carbg b { position: absolute; inset: 0; background: var(--tp); mix-blend-mode: color; opacity: .7; }
+.dp-carbg i { position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--ts) 94%, #000) 0%, color-mix(in srgb, var(--ts) 78%, transparent) 34%, transparent 72%); }
+@media (prefers-reduced-motion: reduce) { .dp-carbg img { transition: none; } }
+.dp-hero.has-carbg .dp-bignum { opacity: .22; }
+.dp-carbg-credit { position: relative; z-index: 3; display: flex; justify-content: flex-start; margin-top: 8px; color: #cbd5e1; font-size: var(--fs-12); }
+.dp-carbg-credit a { color: inherit; }
+@media (max-width: 720px) {
+  .dp-carbg i { background: linear-gradient(180deg, color-mix(in srgb, var(--ts) 70%, transparent) 0%, transparent 34%, color-mix(in srgb, var(--ts) 72%, transparent) 62%, color-mix(in srgb, var(--ts) 95%, #000) 100%); }
+  .dp-carbg img { object-position: 40% 50%; }
+}
 /* руководитель команды: кружок с именем под страной */
 .dp-leaders { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 10px; }
 .dp-leaders:empty { display: none; }
@@ -4666,6 +4675,32 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 /* окно после анимации открытия не держит transform: на прокручиваемом окне с transform Safari при прокрутке
    переставал дорисовывать фото в шапке (фото пропадало или обрезалось) */
 .modal.open .modal-box { animation-fill-mode: backwards !important; }
+.last-race-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* перелёт фото из списка в шапку окна */
+.photo-flight { position: fixed; z-index: 5000; margin: 0; pointer-events: none; will-change: left, top, width, height; }
+.flight-hide { visibility: hidden !important; }
+/* «Что изменилось после гонки» */
+.rc-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 12px; }
+.rc-head h2 { margin: 0; }
+.rc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.rc-tile, .rc-col { min-width: 0; padding: 12px 14px; border-radius: var(--r-sm); background: var(--panel2); }
+.rc-k { display: block; font: 700 var(--fs-12)/1.2 var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.rc-big { display: block; font: 900 var(--fs-28)/1 var(--font-display); color: var(--text-bright, #fff); font-variant-numeric: tabular-nums; }
+.rc-big small { font-size: var(--fs-14); }
+.rc-sub { display: block; margin-top: 4px; font-size: var(--fs-13); color: var(--text); }
+.rc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rc-list li { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding-left: 8px; border-left: 3px solid var(--tc); font-size: var(--fs-14); }
+.rc-list b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.rc-pos { font: 700 var(--fs-12)/1 var(--font-display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.rc-list .pos-move { display: inline-block; margin: 0; animation: none; }
+.rc-none { margin: 0; color: var(--muted); font-size: var(--fs-13); }
+@media (max-width: 560px) { .rc-grid { grid-template-columns: 1fr 1fr; } .rc-col { grid-column: 1 / -1; } .rc-big { font-size: var(--fs-24); } }
+/* «Сравнить с…» в шапке личного дела */
+.dp-compare { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin-top: 10px; padding: 0 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--tp) 50%, transparent); background: rgba(10, 12, 17, .55); color: #fff; font: 700 var(--fs-13)/1 var(--font-display); cursor: pointer; }
+.dp-compare svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dp-compare:hover { border-color: var(--tp); background: color-mix(in srgb, var(--tp) 22%, rgba(10, 12, 17, .55)); }
+.dp-compare:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
+@media (pointer: coarse) { .dp-compare { min-height: 44px; } }
 /* «Пилоты»: фильтра команд нет, выбор сезона крупнее на освободившемся месте */
 #drivers .toolbar #driverSeason { flex: 0 0 220px; min-height: 48px; padding-left: 16px; font: 800 var(--fs-18)/1 var(--font-display); letter-spacing: .02em; }
 @media (max-width: 720px) { #drivers .toolbar .search { flex: 1 1 52%; } #drivers .toolbar #driverSeason { flex: 1 1 40%; } }

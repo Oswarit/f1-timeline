@@ -4674,11 +4674,20 @@ body.sheet-open { overflow: hidden; }
     linear-gradient(125deg, color-mix(in srgb, var(--ts) 88%, var(--tp)) 0%, color-mix(in srgb, var(--ts) 62%, #0b0d11) 58%, color-mix(in srgb, var(--ts) 82%, #0b0d11) 100%);
 }
 .dp-photo { filter: none; transform: translateZ(0); backface-visibility: hidden; }
-.dp-hero:not(.team-hero) .dp-car { right: 15%; bottom: 8px; width: 40%; height: auto; max-height: none; opacity: .9; filter: none;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 34%); mask-image: linear-gradient(to right, transparent 0%, #000 34%);
-  -webkit-mask-composite: source-over; mask-composite: add; transform: translateZ(0); }
-.dp-hero:not(.team-hero):not(.has-photo) .dp-car { right: -8px; width: 46%; }
-@media (max-width: 720px) { .dp-hero:not(.team-hero) .dp-car { display: none; } }
+/* фон шапки пилота — фото болида команды: серое, тонировано цветом команды, слева затемнено под текст (как в зале чемпиона) */
+.dp-carbg { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; border-radius: inherit; isolation: isolate; }
+.dp-carbg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%; filter: grayscale(1) contrast(1.12) brightness(.82); opacity: 0; transition: opacity .6s ease; }
+.dp-carbg img.loaded { opacity: .62; }
+.dp-carbg b { position: absolute; inset: 0; background: var(--tp); mix-blend-mode: color; opacity: .7; }
+.dp-carbg i { position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--ts) 94%, #000) 0%, color-mix(in srgb, var(--ts) 78%, transparent) 34%, transparent 72%); }
+@media (prefers-reduced-motion: reduce) { .dp-carbg img { transition: none; } }
+.dp-hero.has-carbg .dp-bignum { opacity: .22; }
+.dp-carbg-credit { position: relative; z-index: 3; display: flex; justify-content: flex-start; margin-top: 8px; color: #cbd5e1; font-size: var(--fs-12); }
+.dp-carbg-credit a { color: inherit; }
+@media (max-width: 720px) {
+  .dp-carbg i { background: linear-gradient(180deg, color-mix(in srgb, var(--ts) 70%, transparent) 0%, transparent 34%, color-mix(in srgb, var(--ts) 72%, transparent) 62%, color-mix(in srgb, var(--ts) 95%, #000) 100%); }
+  .dp-carbg img { object-position: 40% 50%; }
+}
 /* руководитель команды: кружок с именем под страной */
 .dp-leaders { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 10px; }
 .dp-leaders:empty { display: none; }
@@ -4697,6 +4706,32 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 /* окно после анимации открытия не держит transform: на прокручиваемом окне с transform Safari при прокрутке
    переставал дорисовывать фото в шапке (фото пропадало или обрезалось) */
 .modal.open .modal-box { animation-fill-mode: backwards !important; }
+.last-race-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* перелёт фото из списка в шапку окна */
+.photo-flight { position: fixed; z-index: 5000; margin: 0; pointer-events: none; will-change: left, top, width, height; }
+.flight-hide { visibility: hidden !important; }
+/* «Что изменилось после гонки» */
+.rc-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 12px; }
+.rc-head h2 { margin: 0; }
+.rc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.rc-tile, .rc-col { min-width: 0; padding: 12px 14px; border-radius: var(--r-sm); background: var(--panel2); }
+.rc-k { display: block; font: 700 var(--fs-12)/1.2 var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.rc-big { display: block; font: 900 var(--fs-28)/1 var(--font-display); color: var(--text-bright, #fff); font-variant-numeric: tabular-nums; }
+.rc-big small { font-size: var(--fs-14); }
+.rc-sub { display: block; margin-top: 4px; font-size: var(--fs-13); color: var(--text); }
+.rc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rc-list li { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding-left: 8px; border-left: 3px solid var(--tc); font-size: var(--fs-14); }
+.rc-list b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.rc-pos { font: 700 var(--fs-12)/1 var(--font-display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.rc-list .pos-move { display: inline-block; margin: 0; animation: none; }
+.rc-none { margin: 0; color: var(--muted); font-size: var(--fs-13); }
+@media (max-width: 560px) { .rc-grid { grid-template-columns: 1fr 1fr; } .rc-col { grid-column: 1 / -1; } .rc-big { font-size: var(--fs-24); } }
+/* «Сравнить с…» в шапке личного дела */
+.dp-compare { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin-top: 10px; padding: 0 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--tp) 50%, transparent); background: rgba(10, 12, 17, .55); color: #fff; font: 700 var(--fs-13)/1 var(--font-display); cursor: pointer; }
+.dp-compare svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dp-compare:hover { border-color: var(--tp); background: color-mix(in srgb, var(--tp) 22%, rgba(10, 12, 17, .55)); }
+.dp-compare:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
+@media (pointer: coarse) { .dp-compare { min-height: 44px; } }
 /* «Пилоты»: фильтра команд нет, выбор сезона крупнее на освободившемся месте */
 #drivers .toolbar #driverSeason { flex: 0 0 220px; min-height: 48px; padding-left: 16px; font: 800 var(--fs-18)/1 var(--font-display); letter-spacing: .02em; }
 @media (max-width: 720px) { #drivers .toolbar .search { flex: 1 1 52%; } #drivers .toolbar #driverSeason { flex: 1 1 40%; } }
@@ -4945,6 +4980,7 @@ html.parsing #main { visibility: hidden; }
         <h2>Предыдущий Гран-при</h2>
         <div id="lastRace" class="empty">Определение результатов…</div>
       </div>
+      <div class="card col-12 race-changes-card" id="raceChangesCard" hidden><div id="raceChanges"></div></div>
       <div class="card col-12">
         <h2>Кубок конструкторов <a href="#standings" class="card-link" data-go="standings">вся таблица →</a></h2>
         <div id="homeTeams" class="table-wrap"><div class="loading">Загрузка команд…</div></div>
@@ -7729,6 +7765,7 @@ function renderTeamTable(list, season = state.season, limit = 12) {
   </table>`;
 }
 
+function rSeasonOf(r, fallback) { return Number(r?.season || fallback); }
 function renderLastRace(races) {
   const currentSeason = Number(races[0]?.season) || Number(state.season) || CURRENT_SEASON;
   const done = races.filter(r => {
@@ -7751,7 +7788,7 @@ function renderLastRace(races) {
       <div class="eyebrow">Раунд ${esc(r.round)}</div>
       <h3 style="margin:2px 0 4px">${esc(ruGP(r.raceName))}</h3>
       <p class="subtle" style="margin:0 0 10px">${esc(r.Circuit?.circuitName)} · ${fmtSchedule(r)}</p>
-      <button class="btn secondary" data-race="${esc(r.round)}" data-season="${esc(state.season)}" style="font-size:12px;padding:6px 12px">Открыть результаты</button>
+      <div class="last-race-actions"><button class="btn secondary" data-race="${esc(r.round)}" data-season="${esc(state.season)}" style="font-size:12px;padding:6px 12px">Открыть результаты</button><button type="button" class="btn secondary" data-share-race="${esc(r.round)}" data-season="${esc(rSeasonOf(r, currentSeason))}" style="font-size:12px;padding:6px 12px">Поделиться итогом</button></div>
     </div>
   </div><div class="last-podium" id="lastPodium"></div>`;
   $('#lastRace').classList.remove('empty');
@@ -9517,12 +9554,19 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
     await headshotsReady;
     if (modalCtrl?.signal?.aborted || !$('#modal')?.classList.contains('open')) return;
     const photo = Headshots.url(driverObj.code, 4);
-    const car = teamCarUrl(current?.Constructors?.[0] || raceResults[0]?.Constructor, targetSeason);
+    // напарник: другой пилот той же команды в зачёте сезона (у кого больше очков, если их несколько)
+    const teamId = current?.Constructors?.[0]?.constructorId;
+    const mate = teamId ? (bundle?.drivers || []).find(x => x.Driver?.driverId !== driverObj.driverId && x.Constructors?.[0]?.constructorId === teamId)?.Driver || null : null;
+    const canCompare = Boolean(current && bundle?.drivers?.length > 1);
+    // фото болида команды для фона шапки: только на сайте и только для своего сезона (scripts/build_car_photos.py)
+    const carSet = SITE?.cars?.[String(targetSeason)];
+    const carPick = teamId && carSet?.cars?.[teamId];
+    const carBg = carPick ? { src: `${SITE.base}${carSet.dir}${teamId}-1280.webp`, small: `${SITE.base}${carSet.dir}${teamId}-640.webp`, ...carPick } : null;
     const keep = silent ? { top: $('#modalBox')?.scrollTop || 0, pane: $('#modalBody .modal-tab.active')?.dataset.pane } : null;
     openModal(
       `<h2>${esc(driverName(driverObj))}</h2><p class="subtle">${esc(teamName)} · Сезон ${targetSeason}</p>`,
       `<div class="dp" style="--tp:${pal.p};--ts:${pal.s};--ta:${pal.a};--tc:${pal.tc}">
-      ${driverHeroHtml({ d: driverObj, teamName, pal, season: targetSeason, trait, favId: driverObj.driverId || id, photo, car })}
+      ${driverHeroHtml({ d: driverObj, teamName, pal, season: targetSeason, trait, favId: driverObj.driverId || id, photo, carBg, mate, compare: canCompare })}
       <div class="modal-tabs" role="tablist">
         <button class="modal-tab active" role="tab" data-pane="overview">Сезон ${targetSeason}</button>
         <button class="modal-tab" role="tab" data-pane="log">Этапы</button>
@@ -9569,6 +9613,8 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
     );
     $('#modal')?.classList.add('dossier');
     ChampionHall.decorateDossier();
+    $('#modalBody .dp-compare')?.addEventListener('click', e => compareWith(driverObj.driverId, targetSeason, e.currentTarget.dataset.compareMate || null));
+    if (!silent) PhotoFlight.land($('#modalBody .dp-hero .dp-photo'), 'driver');
     if (!photo) upgradeHeroPhoto(driverObj);
     const dossierBox = $('#modalBox');
     if (dossierBox) dossierBox.scrollTop = 0;
@@ -9666,6 +9712,7 @@ async function showTeam(id, season = state.season) {
     $('#modal')?.classList.add('dossier');
     const box = $('#modalBox');
     if (box) box.scrollTop = 0;
+    PhotoFlight.land($('#modalBody .team-hero .team-logo img'), 'team');
 
     initModalTabs($('#modalBody'), {
       overview: () => { fillTeamSeasonPane(id, targetSeason, races, t); fillTeamLeadersPane(id, targetSeason); },
@@ -10574,6 +10621,7 @@ async function loadHome({ force = false, signal = null } = {}) {
     $('#homeTeams').innerHTML = renderTeamTable(b.teams, state.season, 5);
     PosMoves.decorateAll(state.season);
     renderLastRace(b.races);
+    RaceChanges.render(state.season);
     renderNext(b.races);
     renderHeroSummary({ ...b, season: state.season });
     renderHeroFight({ ...b, season: state.season });
@@ -10867,11 +10915,18 @@ const ShareCard = {
     return c;
   },
   async save() {
+    const d = Deep.parse();
+    if (d?.kind === 'race') return RaceShare.save(d.season, d.round);
     const c = await this.draw();
     if (!c) return;
-    const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+    return this.deliver(c, ($('#modalTitle h2')?.textContent || 'f1').trim());
+  },
+  // на телефоне — меню «Поделиться», на компьютере — скачивание файла
+  async deliver(c, title) {
+    let blob = null;
+    try { blob = await new Promise(res => c.toBlob(res, 'image/png')); } catch { blob = null; }
     if (!blob) { toast('Не удалось собрать картинку'); return; }
-    const name = ($('#modalTitle h2')?.textContent || 'f1').trim().replace(/[^\wА-Яа-яЁё]+/g, '-').toLowerCase() + '.png';
+    const name = String(title || 'f1').replace(/[^\wА-Яа-яЁё]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.png';
     const file = new File([blob], name, { type: 'image/png' });
     try {
       if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
@@ -10883,6 +10938,151 @@ const ShareCard = {
     toast('Картинка сохранена');
   }
 };
+
+// Картинка «итог гонки»: на мониторе квадрат 1080×1080, на телефоне вертикаль 1080×1350 (пост в соцсети).
+// Всё из результатов этапа (снимок или Jolpica); фото пилотов с media.formula1.com (сервер разрешает CORS, картинка не «портится»).
+const RaceShare = {
+  FONT: '"Exo 2", system-ui, -apple-system, "Segoe UI", sans-serif',
+  vertical() { return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768; },
+  photo(code) {
+    const url = Headshots.url(code, 4);
+    if (!url) return Promise.resolve(null);
+    return new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.referrerPolicy = 'no-referrer';
+      const t = setTimeout(() => resolve(null), 6000);
+      img.onload = () => { clearTimeout(t); resolve(img); };
+      img.onerror = () => { clearTimeout(t); resolve(null); };
+      img.src = url + (url.includes('?') ? '&' : '?') + 'share=1';   // отдельный адрес: в кэше браузера могла лежать копия без CORS
+    });
+  },
+  async data(season, round) {
+    const path = `${season}/${round}/results.json`;
+    const res = readSnapshot(path) || await request(path);
+    const race = readRaces(res?.data)[0];
+    const results = (race?.Results || []).slice().sort((a, b) => Number(a.position) - Number(b.position));
+    if (!race || results.length < 3) return null;
+    return { race, results };
+  },
+  async save(season, round) {
+    try {
+      await Headshots.ready(1500);
+      const d = await this.data(season, round);
+      if (!d) { toast('Результатов этого этапа пока нет'); return; }
+      const c = await this.draw(d, this.vertical());
+      return ShareCard.deliver(c, `${ruGP(d.race.raceName)} ${season}`);
+    } catch { toast('Не удалось собрать картинку'); }
+  },
+  async draw({ race, results }, vertical) {
+    try { await document.fonts?.ready; } catch {}
+    const W = 1080, H = vertical ? 1350 : 1080, F = this.FONT, S = ShareCard;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const top3 = results.slice(0, 3);
+    const col = r => teamColor(r?.Constructor?.name) || '#e10600';
+    const win = col(top3[0]);
+    const photos = await Promise.all(top3.map(r => this.photo(r.Driver?.code)));
+    // фон: тёмный, свечение цвета команды победителя, тонкие диагонали
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#0b0d10'); bg.addColorStop(1, '#14181f');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    const glow = g.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, W * .75);
+    glow.addColorStop(0, S.rgba(win, .38)); glow.addColorStop(1, S.rgba(win, 0));
+    g.fillStyle = glow; g.fillRect(0, 0, W, H);
+    g.save(); g.globalAlpha = .05; g.strokeStyle = '#fff'; g.lineWidth = 2;
+    for (let x = -H; x < W; x += 46) { g.beginPath(); g.moveTo(x, H); g.lineTo(x + H, 0); g.stroke(); }
+    g.restore();
+    g.fillStyle = win; g.fillRect(0, 0, 12, H);
+    // шапка
+    g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+    g.fillStyle = '#e10600'; g.font = `800 26px ${F}`; g.fillText('F1 TIMELINE', 64, 84);
+    g.fillStyle = '#aeb8c6'; g.font = `700 26px ${F}`;
+    g.fillText(`ЭТАП ${race.round} · СЕЗОН ${race.season}`.toUpperCase(), 64, 128);
+    g.fillStyle = '#fff'; g.font = `900 ${vertical ? 84 : 76}px ${F}`;
+    let y = vertical ? 222 : 206;
+    S.wrap(g, ruGP(race.raceName).toUpperCase(), W - 128).slice(0, 2).forEach(l => { g.fillText(l, 64, y, W - 128); y += vertical ? 88 : 80; });
+    g.fillStyle = '#aeb8c6'; g.font = `600 28px ${F}`;
+    const when = race.date ? new Date(`${race.date}T12:00:00Z`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    g.fillText([race.Circuit?.circuitName, when].filter(Boolean).join(' · '), 64, y - (vertical ? 30 : 28), W - 128);
+    // подиум: P2, P1, P3
+    const base = vertical ? 930 : 860;
+    const blockH = vertical ? { 1: 236, 2: 190, 3: 166 } : { 1: 200, 2: 160, 3: 140 };
+    const photoH = vertical ? { 1: 330, 2: 280, 3: 260 } : { 1: 280, 2: 236, 3: 220 };
+    const gap = 18, slot = (W - 128 - gap * 2) / 3;
+    [1, 0, 2].forEach((idx, i) => {
+      const r = top3[idx], pos = idx + 1, tc = col(r), x = 64 + i * (slot + gap), top = base - blockH[pos];
+      const ph = photos[idx];
+      if (ph) {
+        const h = photoH[pos], w = h * (ph.naturalWidth / ph.naturalHeight || .8);
+        g.save(); g.beginPath(); g.rect(x - 20, 0, slot + 40, top + 2); g.clip();
+        g.drawImage(ph, x + slot / 2 - w / 2, top - h + 6, w, h);
+        g.restore();
+      } else {
+        g.fillStyle = S.rgba(tc, .3); g.beginPath(); g.arc(x + slot / 2, top - 90, 70, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#fff'; g.font = `800 48px ${F}`; g.textAlign = 'center';
+        g.fillText(`${(r.Driver?.givenName || '?')[0]}${(r.Driver?.familyName || '?')[0]}`, x + slot / 2, top - 74);
+        g.textAlign = 'left';
+      }
+      const gr = g.createLinearGradient(0, top, 0, base);
+      gr.addColorStop(0, S.rgba(tc, .6)); gr.addColorStop(1, S.rgba(tc, .14));
+      g.fillStyle = gr; g.fillRect(x, top, slot, blockH[pos]);
+      g.fillStyle = tc; g.fillRect(x, top, slot, 8);
+      g.textAlign = 'center';
+      g.fillStyle = 'rgba(255,255,255,.95)'; g.font = `900 italic ${pos === 1 ? 60 : 44}px ${F}`;
+      g.fillText(String(pos), x + slot / 2, top + (pos === 1 ? 68 : 54));
+      g.fillStyle = '#fff'; g.font = `800 ${vertical ? 34 : 30}px ${F}`;
+      g.fillText((r.Driver?.familyName || '').toUpperCase(), x + slot / 2, base - (vertical ? 52 : 44), slot - 16);
+      g.fillStyle = '#d7dee8'; g.font = `600 ${vertical ? 24 : 22}px ${F}`;
+      const t = pos === 1 ? (r.Time?.time || '') : (r.Time?.time ? `+${String(r.Time.time).replace(/^\+/, '')}` : (r.status || ''));
+      g.fillText(t, x + slot / 2, base - (vertical ? 18 : 14), slot - 16);
+      g.textAlign = 'left';
+    });
+    // строка фактов: лучший круг и прорыв (только если они есть в результатах)
+    const fl = results.find(r => String(r.FastestLap?.rank) === '1');
+    const gain = results.filter(r => Number(r.grid) > 0 && /^\d+$/.test(String(r.positionText || r.position)))
+      .map(r => ({ r, d: Number(r.grid) - Number(r.position) })).sort((a, b) => b.d - a.d)[0];
+    const facts = [];
+    if (fl?.FastestLap?.Time?.time) facts.push(['ЛУЧШИЙ КРУГ', `${fl.Driver?.familyName || ''} ${fl.FastestLap.Time.time}`]);
+    if (gain && gain.d > 0) facts.push(['ПРОРЫВ', `${gain.r.Driver?.familyName || ''} +${gain.d} (с ${gain.r.grid}-го)`]);
+    let fy = base + 34;
+    if (facts.length) {
+      const fw = (W - 128 - gap * (facts.length - 1)) / facts.length;
+      facts.forEach(([k, v], i) => {
+        const x = 64 + i * (fw + gap);
+        g.fillStyle = 'rgba(255,255,255,.06)'; g.beginPath(); g.roundRect ? g.roundRect(x, fy, fw, 86, 16) : g.rect(x, fy, fw, 86); g.fill();
+        g.fillStyle = '#9aa6b6'; g.font = `700 20px ${F}`; g.fillText(k, x + 22, fy + 32, fw - 40);
+        g.fillStyle = '#fff'; g.font = `800 28px ${F}`; g.fillText(v, x + 22, fy + 68, fw - 40);
+      });
+      fy += 86 + 24;
+    }
+    // вертикаль: места с 4 по 10 в две колонки
+    if (vertical) {
+      const rest = results.slice(3, 10);
+      const cw = (W - 128 - gap) / 2, rh = 44;
+      rest.forEach((r, i) => {
+        const cx = 64 + (i % 2) * (cw + gap), cy = fy + Math.floor(i / 2) * (rh + 8);
+        g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(cx, cy, cw, rh);
+        g.fillStyle = col(r); g.fillRect(cx, cy, 5, rh);
+        g.fillStyle = '#9aa6b6'; g.font = `800 22px ${F}`; g.fillText(String(r.position), cx + 18, cy + 30);
+        g.fillStyle = '#fff'; g.font = `700 24px ${F}`; g.fillText((r.Driver?.familyName || '').toUpperCase(), cx + 62, cy + 30, cw - 160);
+        g.fillStyle = '#d7dee8'; g.font = `700 22px ${F}`; g.textAlign = 'right';
+        g.fillText(`${fmtNum(r.points)} очк.`, cx + cw - 16, cy + 30); g.textAlign = 'left';
+      });
+    }
+    g.fillStyle = '#7f8a99'; g.font = `600 22px ${F}`;
+    const site = SITE ? (location.host + SITE.base).replace(/\/$/, '') : 'F1 Timeline';
+    g.fillText(`${site} · данные: Jolpica F1`, 64, H - 44, W - 128);
+    return c;
+  }
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-share-race]');
+  if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  RaceShare.save(Number(b.dataset.season), b.dataset.shareRace);
+});
 
 const FreshData = {
   snapshotRound() {
@@ -11362,6 +11562,77 @@ const PosMoves = {
       try { data = await this.load(season, kind); } catch { data = null; }
       targets.filter(t => t[1] === kind).forEach(([sel]) => this.mark(document.querySelector(sel), kind, data));
     }
+  }
+};
+
+// «Что изменилось после гонки»: зачёт после последнего этапа против зачёта после предыдущего (Jolpica, те же файлы, что у PosMoves)
+const RaceChanges = {
+  _t: 0,
+  rows(list, kind) { return (kind === 'driver' ? list?.DriverStandings : list?.ConstructorStandings) || []; },
+  async render(season) {
+    const card = $('#raceChangesCard'), box = $('#raceChanges');
+    if (!card || !box) return;
+    const token = ++this._t;
+    season = Number(season) || CURRENT_SEASON;
+    try {
+      const list = path => request(path).then(x => x.data?.MRData?.StandingsTable?.StandingsLists?.[0] || null);
+      const curD = await list(`${season}/driverstandings.json`);
+      const R = Number(curD?.round);
+      if (!(R >= 2)) throw new Error('no previous round');
+      const [prevD, curT, prevT, res] = await Promise.all([
+        list(`${season}/${R - 1}/driverstandings.json`),
+        list(`${season}/${R}/constructorstandings.json`).catch(() => null),
+        list(`${season}/${R - 1}/constructorstandings.json`).catch(() => null),
+        (async () => readSnapshot(`${season}/${R}/results.json`) || await request(`${season}/${R}/results.json`))().catch(() => null)
+      ]);
+      if (token !== this._t || !prevD) throw new Error('no data');
+      const race = readRaces(res?.data)[0] || null;
+      box.innerHTML = this.html({ season, R, curD, prevD, curT, prevT, race });
+      card.hidden = false;
+    } catch {
+      if (token === this._t) { card.hidden = true; box.innerHTML = ''; }
+    }
+  },
+  moves(cur, prev, kind) {
+    const id = x => (kind === 'driver' ? x.Driver.driverId : x.Constructor.constructorId);
+    const was = new Map(this.rows(prev, kind).map(x => [id(x), x]));
+    return this.rows(cur, kind).map(x => {
+      const p = was.get(id(x));
+      return { x, now: Number(x.position), was: p ? Number(p.position) : null, gained: Number(x.points) - (p ? Number(p.points) : 0) };
+    });
+  },
+  name(m, kind) { return kind === 'driver' ? (m.x.Driver.familyName || driverName(m.x.Driver)) : m.x.Constructor.name; },
+  color(m, kind) { return teamColor(kind === 'driver' ? m.x.Constructors?.[0]?.name : m.x.Constructor?.name); },
+  moverList(list, kind) {
+    const moved = list.filter(m => m.was && m.was !== m.now).sort((a, b) => Math.abs(b.was - b.now) - Math.abs(a.was - a.now) || a.now - b.now).slice(0, 4);
+    if (!moved.length) return '<p class="rc-none">Порядок не изменился</p>';
+    return `<ul class="rc-list">${moved.map(m => {
+      const d = m.was - m.now;
+      return `<li style="--tc:${this.color(m, kind)}"><span class="rc-pos">P${m.now}</span><b>${esc(this.name(m, kind))}</b><span class="pos-move ${d > 0 ? 'up' : 'down'}" aria-label="${d > 0 ? 'поднялся' : 'опустился'} на ${Math.abs(d)}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span></li>`;
+    }).join('')}</ul>`;
+  },
+  html({ season, R, curD, prevD, curT, prevT, race }) {
+    const dm = this.moves(curD, prevD, 'driver');
+    const tm = curT && prevT ? this.moves(curT, prevT, 'team') : [];
+    const lead = (list) => { const r = this.rows(list, 'driver'); return r.length > 1 ? { a: r[0], gap: Number(r[0].points) - Number(r[1].points) } : null; };
+    const L1 = lead(curD), L0 = lead(prevD);
+    const sameLeader = L1 && L0 && L1.a.Driver.driverId === L0.a.Driver.driverId;
+    const dGap = sameLeader ? L1.gap - L0.gap : null;
+    const top = [...dm].sort((a, b) => b.gained - a.gained)[0];
+    // прорыв гонки: старт против финиша, только классифицированные и не со старта из пит-лейна
+    const gain = (race?.Results || []).filter(r => Number(r.grid) > 0 && /^\d+$/.test(String(r.positionText || r.position)))
+      .map(r => ({ r, d: Number(r.grid) - Number(r.position) })).sort((a, b) => b.d - a.d)[0];
+    const gp = race?.raceName ? ruGP(race.raceName) : `этапа ${R}`;
+    const tiles = [];
+    if (L1) tiles.push(`<div class="rc-tile"><span class="rc-k">Отрыв лидера</span><b class="rc-big">${fmtNum(L1.gap)}${dGap ? ` <small class="delta ${dGap > 0 ? 'up' : 'down'}">${dGap > 0 ? '+' : '−'}${fmtNum(Math.abs(dGap))}</small>` : ''}</b><span class="rc-sub">${esc(L1.a.Driver.familyName)}${sameLeader ? '' : ' — новый лидер'}</span></div>`);
+    if (top && top.gained > 0) tiles.push(`<div class="rc-tile"><span class="rc-k">Больше всех очков</span><b class="rc-big">+${fmtNum(top.gained)}</b><span class="rc-sub">${esc(this.name(top, 'driver'))}</span></div>`);
+    if (gain && gain.d > 0) tiles.push(`<div class="rc-tile"><span class="rc-k">Прорыв гонки</span><b class="rc-big">+${gain.d}</b><span class="rc-sub">${esc(gain.r.Driver?.familyName || '')}: с ${esc(gain.r.grid)}-го на ${esc(gain.r.position)}-е</span></div>`);
+    return `<div class="rc-head"><h2>Что изменилось после ${esc(gp)}</h2><span class="cap">этап ${R}, сезон ${season}</span></div>
+      <div class="rc-grid">
+        ${tiles.join('')}
+        <div class="rc-col"><span class="rc-k">Пилоты</span>${this.moverList(dm, 'driver')}</div>
+        ${tm.length ? `<div class="rc-col"><span class="rc-k">Команды</span>${this.moverList(tm, 'team')}</div>` : ''}
+      </div>`;
   }
 };
 
@@ -11854,6 +12125,115 @@ const AppBadge = {
 
 // Phone: a horizontal swipe on the page goes to the neighbouring tab (TAB_ORDER). Not over tables, charts, maps, scrollable
 // rows or form fields, and not while a window or the search is open; a mostly vertical move is a scroll, never a swipe.
+// Перелёт фото: портрет из карточки списка (или логотип команды) летит в шапку открывшегося окна.
+// Своя анимация (не View Transitions): окно рисуется после загрузки данных, а перелёт ждёт его и работает в любом браузере.
+const PhotoFlight = {
+  from: null,
+  init() {
+    document.addEventListener('click', e => {
+      const card = e.target.closest?.('.driver-card, .team-card, tr[data-driver], tr[data-team]');
+      if (!card || e.target.closest('.fav-btn')) { return; }
+      const team = card.matches('.team-card, tr[data-team]');
+      const src = team ? card.querySelector('.team-logo img') : card.querySelector('.avatar.has-photo img, .avatar > img');
+      if (!src || !src.complete || !src.naturalWidth) { this.from = null; return; }
+      const r = src.getBoundingClientRect();
+      if (!r.width) return;
+      this.from = { kind: team ? 'team' : 'driver', src: src.currentSrc || src.src, rect: r, radius: getComputedStyle(team ? src : (src.closest('.avatar') || src)).borderRadius, t: Date.now() };
+    }, true);
+  },
+  async land(target, kind) {
+    const f = this.from;
+    this.from = null;
+    if (!f || f.kind !== kind || Date.now() - f.t > 4000 || !target || Motion.reduced()) return;
+    // ждём, пока окно доедет (анимация открытия), чтобы лететь в настоящее место
+    const box = $('#modalBox');
+    try { await Promise.all((box?.getAnimations?.() || []).map(a => a.finished)); } catch {}
+    if (!target.isConnected) return;
+    const to = target.getBoundingClientRect();
+    if (!to.width || !to.height || to.bottom < 0 || to.top > window.innerHeight) return;
+    const ghost = new Image();
+    ghost.src = f.src; ghost.alt = ''; ghost.className = 'photo-flight';
+    ghost.referrerPolicy = 'no-referrer';
+    ghost.style.objectFit = kind === 'team' ? 'contain' : 'cover';
+    document.body.appendChild(ghost);
+    target.classList.add('flight-hide');
+    const frame = r => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    try {
+      await ghost.animate([{ ...frame(f.rect), borderRadius: f.radius }, { ...frame(to), borderRadius: kind === 'team' ? '0px' : '0px' }],
+        { duration: 420, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' }).finished;
+    } catch {}
+    target.classList.remove('flight-hide');
+    try { await ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }).finished; } catch {}
+    ghost.remove();
+  }
+};
+
+// iPhone: окно-шторка закрывается свайпом вниз (когда оно прокручено к началу), а в приложении с экрана «Домой»
+// свайп от левого края работает как «назад» (в самом Safari этот жест и так есть у браузера, поэтому там не включается)
+const SheetSwipe = {
+  standalone() { return window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true; },
+  blocked(el) {
+    return el.closest?.('.table-wrap, canvas, svg, input, select, textarea, [data-no-swipe], .modal-tabs')
+      || [...(function* (e) { for (; e && e.id !== 'modalBox'; e = e.parentElement) yield e; })(el)].some(e => e.scrollWidth > e.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(e).overflowX));
+  },
+  init() {
+    if (!window.matchMedia?.('(pointer: coarse)').matches) return;
+    const box = $('#modalBox');
+    if (box) {
+      let y0 = null, x0 = 0, dy = 0, t0 = 0, live = false;
+      box.addEventListener('touchstart', e => {
+        y0 = null; live = false;
+        if (e.touches.length !== 1 || box.scrollTop > 0 || this.blocked(e.target)) return;
+        y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; t0 = Date.now();
+      }, { passive: true });
+      box.addEventListener('touchmove', e => {
+        if (y0 === null) return;
+        const ny = e.touches[0].clientY - y0, nx = e.touches[0].clientX - x0;
+        if (!live) {
+          if (Math.abs(nx) > Math.abs(ny) || ny < 0 || box.scrollTop > 0) { if (Math.abs(nx) > 8 || ny < -8) y0 = null; return; }
+          if (ny < 10) return;
+          live = true;
+        }
+        dy = Math.max(0, ny);
+        box.style.transition = 'none';
+        box.style.transform = `translateY(${dy}px)`;
+      }, { passive: true });
+      const end = () => {
+        if (y0 === null) return;
+        y0 = null;
+        const fast = dy > 50 && Date.now() - t0 < 300;
+        box.style.transition = 'transform .22s ease';
+        if (live && (dy > 120 || fast)) {
+          box.style.transform = 'translateY(100%)';
+          setTimeout(() => { closeModal(); box.style.transform = ''; box.style.transition = ''; }, 200);
+        } else {
+          box.style.transform = '';
+          setTimeout(() => { box.style.transition = ''; }, 240);
+        }
+        live = false;
+      };
+      box.addEventListener('touchend', end, { passive: true });
+      box.addEventListener('touchcancel', end, { passive: true });
+    }
+    if (!this.standalone()) return;
+    let ex = null, ey = 0, et = 0;
+    document.addEventListener('touchstart', e => {
+      ex = e.touches.length === 1 && e.touches[0].clientX < 24 ? e.touches[0].clientX : null;
+      if (ex !== null) { ey = e.touches[0].clientY; et = Date.now(); }
+    }, { passive: true, capture: true });
+    document.addEventListener('touchend', e => {
+      if (ex === null) return;
+      const t = e.changedTouches[0], dx = t.clientX - ex, dy = t.clientY - ey;
+      ex = null;
+      if (dx < 80 || Math.abs(dy) > dx * .6 || Date.now() - et > 700) return;
+      if ($('#searchDialog')?.classList.contains('open')) closeSearch();
+      else if (document.body.classList.contains('sheet-open')) MoreSheet.close();
+      else if ($('#modal')?.classList.contains('open')) closeModal();
+      else if (history.length > 1) history.back();
+    }, { passive: true, capture: true });
+  }
+};
+
 const TabSwipe = {
   init() {
     if (!window.matchMedia?.('(pointer: coarse)').matches) return;
@@ -11863,7 +12243,8 @@ const TabSwipe = {
     const blocked = el => el.closest?.('table, .table-wrap, canvas, svg, input, select, textarea, .hero-track, .champ-grid, .race-list, .modal, [data-no-swipe]')
       || [...(function* (e) { for (; e && e !== main; e = e.parentElement) yield e; })(el)].some(e => e.scrollWidth > e.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(e).overflowX));
     main.addEventListener('touchstart', e => {
-      if (e.touches.length !== 1 || document.body.classList.contains('modal-open') || document.body.classList.contains('sheet-open') || blocked(e.target)) { x0 = null; return; }
+      if (e.touches.length !== 1 || document.body.classList.contains('modal-open') || document.body.classList.contains('sheet-open') || blocked(e.target)
+          || (e.touches[0].clientX < 24 && SheetSwipe.standalone())) { x0 = null; return; }
       x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
     }, { passive: true });
     main.addEventListener('touchend', e => {
@@ -12640,6 +13021,8 @@ function initEvents() {
   CalendarSub.init();
   AppBadge.init();
   TabSwipe.init();
+  SheetSwipe.init();
+  PhotoFlight.init();
 
   $('#modalClose')?.addEventListener('click', closeModal);
   $('#modal')?.addEventListener('click', e => {
@@ -14290,19 +14673,46 @@ function driverSeasonMetrics(rounds) {
   };
 }
 
+// «Сравнить с…» из личного дела: окно закрывается, «Сравнение» открывается с этим пилотом и напарником
+function afterModalClosed() {
+  return new Promise(resolve => {
+    if (!window._modalBackPending) return resolve();
+    const done = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(done, 500);
+    window.addEventListener('popstate', () => setTimeout(done, 0), { once: true });
+  });
+}
+async function compareWith(a, season, b = null) {
+  state.comparePreset = { season: Number(season), a, b };
+  setPageSeason('compare', Number(season));
+  const sel = $('#compareSeason');
+  if (sel) sel.value = String(season);
+  closeModal();
+  await afterModalClosed();
+  if (state.tab === 'compare') loadComparePage(); else switchTab('compare');
+}
+
 async function loadComparePage({ signal = null } = {}) {
   const season = Number($('#compareSeason')?.value) || CURRENT_SEASON;
   setPageSeason('compare', season);
+  const preset = state.comparePreset?.season === season ? state.comparePreset : null;
   try {
     const b = await loadSeasonBundle(season, { signal });
     if (signal?.aborted || Number($('#compareSeason').value) !== season) return;
     state.pageData.compare = { season, b };
     const opts = b.drivers.map(d => `<option value="${esc(d.Driver.driverId)}">${esc(driverName(d.Driver))} · ${esc(d.Constructors?.[0]?.name || '—')}</option>`).join('');
+    const has = id => Boolean(id) && b.drivers.some(d => d.Driver.driverId === id);
+    if (preset) {
+      state.comparePreset = null;
+      // нет напарника — второй пилот первый по зачёту, кроме самого пилота
+      if (!has(preset.b) || preset.b === preset.a) preset.b = b.drivers.find(d => d.Driver.driverId !== preset.a)?.Driver.driverId || '';
+    }
     ['compareA', 'compareB'].forEach((id, i) => {
       const el = $('#' + id);
       const prev = el.value;
       el.innerHTML = opts;
-      el.value = b.drivers.some(d => d.Driver.driverId === prev) ? prev : (b.drivers[i]?.Driver.driverId || '');
+      const want = preset ? preset[i ? 'b' : 'a'] : prev;
+      el.value = has(want) ? want : (b.drivers[i]?.Driver.driverId || '');
     });
     await renderComparison();
   } catch {
@@ -15704,7 +16114,7 @@ function traitIcon(id) {
   return `<svg class="tt-ic" viewBox="0 0 24 24" aria-hidden="true">${TRAIT_ICONS[id] || TRAIT_ICONS.points}</svg>`;
 }
 
-function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, car = null }) {
+function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, carBg = null, mate = null, compare = false }) {
   const flag = flagOf(d.nationality);
   const age = ageFrom(d.dateOfBirth);
   const num = d.permanentNumber || '';
@@ -15712,12 +16122,14 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
   const titles = ChampionHall.allTitles(d.driverId);
   const reigning = ChampionHall.current();
   const isReigning = reigning && reigning.row.Driver.driverId === d.driverId;
-  return `<div class="dp-hero${photo ? ' has-photo' : ''}${isReigning ? ' is-champion' : ''}">
+  // фото болида команды (Wikimedia Commons) фоном шапки; у действующего чемпиона фон — фото зала, болид не нужен
+  const bg = isReigning ? null : carBg;
+  return `<div class="dp-hero${photo ? ' has-photo' : ''}${isReigning ? ' is-champion' : ''}${bg ? ' has-carbg' : ''}">
     ${isReigning ? '<div class="hall-bg dp-hall" aria-hidden="true"></div>' : ''}
+    ${bg ? `<div class="dp-carbg" aria-hidden="true"><img class="${LoadedImgs.has(bg.small) ? 'loaded' : ''}" src="${esc(bg.small)}" srcset="${esc(bg.small)} 640w, ${esc(bg.src)} 1280w" sizes="(max-width: 720px) 100vw, 920px" alt="" decoding="async"><b></b><i></i></div>` : ''}
     <span class="hud-corner tl" aria-hidden="true"></span><span class="hud-corner tr" aria-hidden="true"></span><span class="hud-corner bl" aria-hidden="true"></span><span class="hud-corner br" aria-hidden="true"></span>
     <span class="dp-stripe"></span>
     ${num ? `<div class="dp-bignum" aria-hidden="true">${esc(num)}</div>` : ''}
-    ${car ? `<img class="dp-car" src="${esc(car)}" alt="" width="640" height="224" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
     ${photo ? `<img class="dp-photo${LoadedImgs.has(photo) ? ' loaded' : ''}" src="${photo}" alt="${esc(driverName(d))}" width="432" height="540" fetchpriority="high" referrerpolicy="no-referrer" onerror="this.remove();this.closest('.dp-hero')?.classList.remove('has-photo')">` : ''}
     <div class="dp-id">
       ${photo ? '' : `<div class="avatar dp-avatar" data-wiki="${esc(d.url || '')}">${esc(initials)}</div>`}
@@ -15725,6 +16137,7 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
         <div class="dp-team"><i></i>${esc(teamName)} · сезон ${season}</div>
         <h2><span>${esc(d.givenName || '')}</span>${esc(d.familyName || '')}</h2>
         <div class="dp-meta">${flag ? `<span class="dp-flag">${flag}</span>` : ''}${esc(ruNat(d.nationality) || '')}${age !== null ? ` · ${age} ${ruPlural(age, ['год', 'года', 'лет'])} (${esc(d.dateOfBirth)})` : ''}<span id="dpDebut"></span></div>
+        ${compare ? `<button type="button" class="dp-compare" data-compare-mate="${esc(mate?.driverId || '')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>${mate ? `Сравнить с ${esc(mate.familyName || driverName(mate))}` : 'Сравнить с пилотом'}</button>` : ''}
         ${titles.length ? `<div class="dp-titles" title="Титулы чемпиона мира: архив чемпионов Jolpica${isReigning && !reigning.final ? '; последний решён математически' : ''}"><b>${titles.length > 1 ? `${titles.length}× ч` : 'Ч'}емпион мира</b><small>${titles.map(esc).join(' · ')}</small></div>` : ''}
       </div>
     </div>
@@ -15733,6 +16146,7 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
       ${num ? `<div class="dp-plate" title="Гоночный номер"><small>№</small><b>${esc(num)}</b></div>` : ''}
       ${(trait?.list || []).map(t => `<div class="dp-trait" title="${esc(`${t.rank}-е место среди пилотов сезона по результатам ${trait.rounds} ${ruPlural(trait.rounds, ['этапа', 'этапов', 'этапов'])}`)}">${traitIcon(t.id)}<b>${t.rank}-й</b><span class="tt-name">${esc(t.name)}</span><small>${esc(t.text)}</small></div>`).join('')}
     </div>
+    ${bg ? `<small class="dp-carbg-credit"><button type="button" class="info-tip info-tip-text" aria-label="Фото болида: автор и лицензия" aria-expanded="false">Фото: Wikimedia Commons <span aria-hidden="true">i</span></button><span class="info-tip-body" hidden><a href="${esc(bg.source)}" target="_blank" rel="noopener noreferrer">${esc(bg.author)} · ${esc(bg.licence)}</a></span></small>` : ''}
     <div class="dp-palette" title="Палитра команды ${esc(teamName)}"><i style="background:${pal.p}"></i><i style="background:${pal.s}"></i><i style="background:${pal.a}"></i></div>
   </div>`;
 }
