@@ -469,8 +469,9 @@ function populateCircuitFilters() {
 }
 
 async function showCircuit(id) {
-  WinSeq.next();
+  const winSeq = WinSeq.next();
   if (!SnapshotStore.allDone) await SnapshotStore.whenAll();
+  if (WinSeq.n !== winSeq) return;
   const canonId = TRACK_ALIASES[id] || id;
   const entry = TRACK_REGISTRY[canonId] || {
     name: canonId, country: 'F1', locality: '', seasons: [], turns: 14, lengthKm: 5.0,
@@ -698,10 +699,6 @@ async function loadCircuitHistoryUI(canonId) {
   }
 }
 
-function roundsSignature(rounds) {
-  return [...rounds.values()].sort((a, b) => a.round - b.round).map(x => `${x.round}:${x.race?.position || ''}/${x.race?.points || ''}/${x.qual?.position || ''}`).join(',');
-}
-
 async function computeTeammateBattle(season, driverId, standings, signal = null) {
   const carOf = x => (x?.race || x?.qual)?.Constructor?.constructorId;
   const myRounds = await loadDriverSeasonRounds(season, driverId, signal);
@@ -774,21 +771,20 @@ function renderTeammateBattleHtml(teammateBattle, current, targetSeason) {
   `;
 }
 
-async function showDriver(id, season = state.season, { silent = false } = {}) {
+async function showDriver(id, season = state.season) {
   const winSeq = WinSeq.next();
-  if (!SnapshotStore.allDone) await SnapshotStore.whenAll();
   const targetSeason = Number(season);
   Deep.next = { path: `driver/${encodeURIComponent(id)}/${targetSeason}`, t: Date.now() };
-  // тихая перерисовка (пришли свежие данные сети): окно не мигает «Загрузкой», фото не пропадает
-  if (!silent) openModal(
-    '<h2>Загрузка профиля пилота…</h2>',
-    '<div class="loading">Получение данных сезона и карьерной статистики пилота…</div>'
-  );
+  openModal('<h2>Профиль пилота</h2>', '<div class="loading" role="status">Загрузка профиля пилота…</div>', { dossier: true });
+  const box = $('#modalBox');
+  box.scrollTop = 0;
   const modalCtrl = window._modalAbortController;
-  // список фото пилотов (OpenF1) ждём параллельно с данными и недолго: не пришёл — фото добавит upgradeHeroPhoto
-  const headshotsReady = Headshots.ready(QUICK_MS);
+  const active = () => WinSeq.n === winSeq && !modalCtrl.signal.aborted;
 
   try {
+    const path = `${targetSeason}/driverstandings.json`;
+    if (SnapshotStore.needs(path)) await SnapshotStore.ensure(path);
+    if (!active()) return;
     const cleanId = String(id || '').trim().toLowerCase();
     const canonId = (typeof normalizeDriverId === 'function' ? normalizeDriverId(cleanId) : cleanId) || cleanId;
     const isDriverMatch = (dId) => {
@@ -799,7 +795,7 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
       return false;
     };
 
-    let bundle = (state.season === targetSeason ? state.standings : null) ||
+    let bundle = (Number(state.standings?.season) === targetSeason ? state.standings : null) ||
                  Object.values(state.pageData).find(x => x?.season === targetSeason && x.b?.drivers?.some(d => isDriverMatch(d.Driver?.driverId)))?.b;
     if (!bundle) {
       const snap = readSnapshot(`${targetSeason}/driverstandings.json`);
@@ -813,123 +809,31 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
       const payload = snap?.endpoints?.[`${targetSeason}/driverstandings.json`];
       if (payload) bundle = { drivers: readDrivers(payload), season: targetSeason };
     }
-    const current = bundle?.drivers?.find(d => isDriverMatch(d.Driver?.driverId));
-
-    const recentSeasons = [targetSeason, targetSeason - 1, targetSeason - 2].filter(y => y >= CONFIG.seasonStart);
+    if (!active()) return;
+    let current = bundle?.drivers?.find(d => isDriverMatch(d.Driver?.driverId));
     const driverKey = current?.Driver?.driverId || canonId;
-    // окно рисуется сразу; если потом придут другие (более свежие) данные сети, оно перерисуется ими
-    let shownSig = null;
-    const refresh = () => {
-      // перерисовываем, только если открыто всё то же окно этого пилота
-      if (WinSeq.n !== winSeq || modalCtrl?.signal?.aborted || !$('#modal')?.classList.contains('open')) return;
-      showDriver(id, season, { silent: true });
-    };
-    const quickStandings = y => {
-      const path = `${y}/driverstandings.json`;
-      const snap = readSnapshot(path);
-      if (!isLiveSeasonPath(String(y))) return snap ? Promise.resolve(snap) : request(path, { signal: modalCtrl?.signal });
-      const net = request(path, { signal: modalCtrl?.signal });
-      if (!snap) return net;
-      return Promise.race([net, new Promise(r => setTimeout(() => r(null), QUICK_MS))]).then(v => {
-        if (v) return v;
-        const mine = rows => readDrivers(rows?.data).find(d => isDriverMatch(d.Driver?.driverId));
-        net.then(fresh => { const a = mine(fresh), b = mine(snap); if (a && (a.points !== b?.points || a.position !== b?.position)) refresh(); }).catch(() => {});
-        return snap;
-      });
-    };
-    const [roundsSettled, ...careerSettled] = await Promise.allSettled([
-      loadDriverSeasonRounds(targetSeason, driverKey, modalCtrl?.signal, {
-        quick: true,
-        onFresh: net => { if (shownSig !== null && roundsSignature(net) !== shownSig) refresh(); }
-      }),
-      ...recentSeasons.map(quickStandings)
-    ]);
-
-    if (modalCtrl?.signal?.aborted || !$('#modal')?.classList.contains('open')) return;
-
-    if (roundsSettled.status === 'rejected') throw roundsSettled.reason;
-    shownSig = roundsSignature(roundsSettled.value);
-    const seasonRounds = [...roundsSettled.value.values()].sort((x, y) => x.round - y.round);
-    let raceResults = seasonRounds.filter(x => x.race).map(x => ({ ...x.race, raceName: x.raceName, round: x.round, date: x.date }));
-    let qualResults = seasonRounds.filter(x => x.qual).map(x => ({ ...x.qual, raceName: x.raceName, round: x.round }));
-
-    const finishes = raceResults.map(x => Number(x.position)).filter(Number.isFinite);
-    const calculatedWins = raceResults.filter(x => x.position === '1').length;
-    const calculatedPodiums = raceResults.filter(x => ['1', '2', '3'].includes(String(x.position))).length;
-    const calculatedFastest = raceResults.filter(isOfficialFastestLap).length;
-    const calculatedPoles = qualResults.filter(x => x.position === '1').length;
-    const calculatedAvg = finishes.length ? (finishes.reduce((a, b) => a + b, 0) / finishes.length).toFixed(1) : '—';
-    const calculatedDnfs = raceResults.filter(x => x.status && x.status !== 'Finished' && !/^\+\d+ Laps?$/.test(x.status) && x.status !== 'Lapped').length;
-
-    // every number here is counted from the round results (snapshot or Jolpica); nothing is typed in by hand
-    const standingsWins = Number(current?.wins) || 0;
-    const wins = Math.max(standingsWins, calculatedWins);
-    const podiums = calculatedPodiums;
-    const poles = calculatedPoles;
-    const fastest = calculatedFastest;
-    const avg = calculatedAvg;
-    const dnfs = calculatedDnfs;
-
-    let careerRows = careerSettled.map((x, i) => {
-      if (x.status !== 'fulfilled') return null;
-      const d = readDrivers(x.value.data).find(row => isDriverMatch(row.Driver?.driverId));
-      return d ? {
-        season: recentSeasons[i],
-        pos: d.position,
-        pts: d.points,
-        team: d.Constructors?.[0]?.name || '—'
-      } : null;
-    }).filter(Boolean).sort((a, b) => Number(b.season) - Number(a.season));
-
-    if (!careerRows.length) {
-      const hist = (typeof DRIVER_CAREER_PROGRESSION !== 'undefined' &&
-                    (DRIVER_CAREER_PROGRESSION[canonId] || DRIVER_CAREER_PROGRESSION[cleanId])) || [];
-      if (hist.length) {
-        careerRows = hist
-          .filter(h => h && h.season && h.pos !== null && h.pts !== null && h.season <= targetSeason)
-          .map(h => ({
-            season: h.season,
-            pos: h.pos,
-            pts: h.pts,
-            team: h.team || '—'
-          }))
-          .sort((a, b) => Number(b.season) - Number(a.season))
-          .slice(0, 5);
+    let latestRounds;
+    let paintSeason;
+    const initialRounds = await loadDriverSeasonRounds(targetSeason, driverKey, modalCtrl.signal, {
+      onFresh: rounds => {
+        if (!active()) return;
+        latestRounds = rounds;
+        paintSeason?.();
       }
+    });
+    if (!active()) return;
+    latestRounds = latestRounds || initialRounds;
+    const first = [...latestRounds.values()].find(row => row.race || row.qual);
+    const result = first?.race || first?.qual;
+    const driverObj = current?.Driver || result?.Driver;
+    if (!driverObj) {
+      $('#modalBody').innerHTML = '<div class="empty">Нет данных об этом пилоте за выбранный сезон.</div>';
+      return;
     }
-
-    const driverObj = current?.Driver || raceResults[0]?.Driver || { givenName: id, familyName: '' };
-    const teamName = current?.Constructors?.[0]?.name || raceResults[0]?.Constructor?.name || '—';
-    const color = teamColor(teamName);
-
-    const careerHtml = careerRows.length ? `
-      <h3 style="margin-top:22px">История сезонов</h3>
-      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px">
-        ${careerRows.map(c => `
-          <div style="min-width:105px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);text-align:center">
-            <b style="color:var(--red2);font-size:1.1rem">${esc(c.season)}</b>
-            <div style="font-size:13px;font-weight:800;margin:3px 0">P${esc(c.pos)} · ${fmtNum(c.pts)}</div>
-            <div class="subtle" style="font-size:12px">${esc(c.team)}</div>
-          </div>
-        `).join('')}
-      </div>
-    ` : '';
-
-    let formPillsHtml = raceResults.slice(-5).reverse().map(r => {
-      const p = Number(r.position);
-      const cls = p === 1 ? 'p1' : p <= 3 ? 'podium' : p <= 10 ? 'points' : r.status !== 'Finished' ? 'dnf' : '';
-      return `<span class="form-pill ${cls}" title="${esc(r.raceName || '')}: P${p}">P${p || '—'}</span>`;
-    }).join('');
-
-    if (!formPillsHtml) {
-      formPillsHtml = '<span class="subtle">Нет данных</span>';
-    }
-
+    const teamName = current?.Constructors?.[0]?.name || result?.Constructor?.name || '—';
     const pal = teamPalette(teamName);
     const traits = computeDriverTraits(targetSeason);
     const trait = traits?.[driverObj.driverId] || null;
-    await headshotsReady;
-    if (modalCtrl?.signal?.aborted || !$('#modal')?.classList.contains('open')) return;
     const photo = Headshots.url(driverObj.code, 4);
     // напарник: другой пилот той же команды в зачёте сезона (у кого больше очков, если их несколько)
     const teamId = current?.Constructors?.[0]?.constructorId;
@@ -939,10 +843,8 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
     const carSet = SITE?.cars?.[String(targetSeason)];
     const carPick = teamId && carSet?.cars?.[teamId];
     const carBg = carPick ? { src: `${SITE.base}${carSet.dir}${teamId}-1280.webp`, small: `${SITE.base}${carSet.dir}${teamId}-640.webp`, ...carPick } : null;
-    const keep = silent ? { top: $('#modalBox')?.scrollTop || 0, pane: $('#modalBody .modal-tab.active')?.dataset.pane } : null;
-    openModal(
-      `<h2>${esc(driverName(driverObj))}</h2><p class="subtle">${esc(teamName)} · Сезон ${targetSeason}</p>`,
-      `<div class="dp" style="--tp:${pal.p};--ts:${pal.s};--ta:${pal.a};--tc:${pal.tc}">
+    $('#modalTitle').innerHTML = `<h2>${esc(driverName(driverObj))}</h2><p class="subtle">${esc(teamName)} · Сезон ${targetSeason}</p>`;
+    $('#modalBody').innerHTML = `<div class="dp" style="--tp:${pal.p};--ts:${pal.s};--ta:${pal.a};--tc:${pal.tc}">
       ${driverHeroHtml({ d: driverObj, teamName, pal, season: targetSeason, trait, favId: driverObj.driverId || id, photo, carBg, mate, compare: canCompare })}
       <div class="modal-tabs" role="tablist">
         <button class="modal-tab active" role="tab" data-pane="overview">Сезон ${targetSeason}</button>
@@ -950,22 +852,11 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
         <button class="modal-tab" role="tab" data-pane="career">Карьера</button>
       </div>
       <section class="modal-pane" data-pane="overview">
-      <div class="stat-grid">
-        <div class="stat"><b class="countup" data-val="${current ? Number(current.points) : (raceResults.reduce((s, x) => s + (Number(x.points) || 0), 0) || (verified?.pts || 0))}">${current ? fmtNum(current.points) : fmtNum(raceResults.reduce((s, x) => s + (Number(x.points) || 0), 0) || (verified?.pts || 0))}</b><span>очки (${targetSeason})</span></div>
-        <div class="stat"><b>${current ? 'P' + esc(current.position) : (verified?.pos ? 'P' + verified.pos : '—')}</b><span>место в зачёте</span></div>
-        <div class="stat"><b class="countup" data-val="${wins}">${wins}</b><span>победы</span></div>
-        <div class="stat"><b class="countup" data-val="${podiums}">${podiums}</b><span>подиумы</span></div>
-        <div class="stat"><b class="countup" data-val="${poles}">${poles}</b><span>поулы</span></div>
-        <div class="stat"><b class="countup" data-val="${fastest}">${fastest}</b><span>лучшие круги</span></div>
-        <div class="stat"><b>${avg}</b><span>средний финиш</span></div>
-        <div class="stat"><b>${dnfs}</b><span>сходы (DNF)</span></div>
-      </div>
+      <div class="stat-grid" id="driverSeasonStats"></div>
       ${(() => { const rd = driverRadarData(targetSeason, driverObj.driverId); return rd ? `<h3 style="margin-top:20px">Профиль сезона ${targetSeason}</h3>${driverRadarHtml(rd, pal.p)}` : ''; })()}
       <!-- Driver Form (Last 5 races) -->
       <h3 style="margin-top:20px">Форма пилота (последние этапы)</h3>
-      <div class="form-pills">
-        ${formPillsHtml}
-      </div>
+      <div class="form-pills"></div>
 
       <!-- Teammate Battle (H2H): filled asynchronously -->
       <div id="teammateBattleBox"><h3 style="margin-top:20px">Битва напарников (Teammate Battle)</h3><div class="loading" style="padding:14px">Сравнение с напарником по этапам…</div></div>
@@ -984,41 +875,81 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
         </div>
       </div>
       </section>
-      <section class="modal-pane" data-pane="log">${seasonLogHtml(raceResults.map(x => ({ ...x, season: targetSeason })), qualResults)}</section>
+      <section class="modal-pane" data-pane="log"></section>
       <section class="modal-pane" data-pane="career"><div id="dpCareer"><div class="loading">Собираем карьеру с дебюта…</div></div></section>
-      </div>`
-    );
-    $('#modal')?.classList.add('dossier');
+      </div>`;
+    const rendered = new Map();
+    const write = (el, html) => {
+      if (rendered.get(el) === html) return;
+      el.innerHTML = html;
+      rendered.set(el, html);
+    };
+    const stats = $('#driverSeasonStats'), form = $('#modalBody .form-pills'), log = $('#modalBody [data-pane="log"].modal-pane');
+    paintSeason = () => {
+      const scrollTop = box.scrollTop;
+      const rows = [...latestRounds.values()].sort((a, b) => a.round - b.round);
+      const races = rows.filter(r => r.race).map(r => ({ ...r.race, raceName: r.raceName, season: targetSeason, round: r.round }));
+      const quals = rows.filter(r => r.qual).map(r => ({ ...r.qual, round: r.round }));
+      const metric = driverSeasonMetrics(latestRounds);
+      const finishes = races.map(r => Number(r.position)).filter(Number.isFinite);
+      const avgFinish = finishes.length ? (finishes.reduce((sum, pos) => sum + pos, 0) / finishes.length).toFixed(1) : null;
+      const statsRows = [
+        [fmtNum(current?.points ?? (races.length ? metric.points : null)), `очки (${targetSeason})`],
+        [current?.position ? 'P' + current.position : null, 'место в зачёте'],
+        [current || races.length ? Math.max(Number(current?.wins) || 0, metric.wins) : null, 'победы'],
+        [races.length ? metric.podiums : null, 'подиумы'], [quals.length ? metric.poles : null, 'поулы'],
+        [races.length ? metric.fastest : null, 'лучшие круги'], [avgFinish, 'средний финиш'],
+        [races.length ? metric.dnfs : null, 'сходы (DNF)']
+      ];
+      write(stats, statsRows.map(([v, label]) => `<div class="stat"><b>${esc(v ?? '—')}</b><span>${label}</span></div>`).join(''));
+      write(form, races.slice(-5).reverse().map(r => {
+        const p = Number(r.position);
+        const cls = p === 1 ? 'p1' : p <= 3 ? 'podium' : p <= 10 ? 'points' : isActualDnf(r.status) ? 'dnf' : '';
+        return `<span class="form-pill ${cls}" title="${esc(r.raceName || '')}: P${p}">P${p || '—'}</span>`;
+      }).join('') || '<span class="subtle">Нет данных</span>');
+      const tableScroll = log.querySelector('.table-wrap')?.scrollLeft || 0;
+      const focusedRound = log.contains(document.activeElement) ? document.activeElement.closest('[data-race]')?.dataset.race : null;
+      write(log, seasonLogHtml(races, quals));
+      if (tableScroll) log.querySelector('.table-wrap')?.scrollTo({ left: tableScroll, behavior: 'instant' });
+      if (focusedRound && !log.contains(document.activeElement)) {
+        [...log.querySelectorAll('[data-race]')].find(row => row.dataset.race === focusedRound)?.focus({ preventScroll: true });
+      }
+      if (box.scrollTop !== scrollTop) box.scrollTop = scrollTop;
+    };
+    paintSeason();
+    if (isLiveSeasonPath(path)) {
+      request(path, { signal: modalCtrl.signal }).then(fresh => {
+        if (!active()) return;
+        const standing = readDrivers(fresh.data).find(d => isDriverMatch(d.Driver?.driverId));
+        if (standing) { current = standing; paintSeason(); }
+      }).catch(() => {});
+    }
+    ImageObserver.observeAll();
     ChampionHall.decorateDossier();
     $('#modalBody .dp-compare')?.addEventListener('click', e => compareWith(driverObj.driverId, targetSeason, e.currentTarget.dataset.compareMate || null));
-    if (!silent) PhotoFlight.land($('#modalBody .dp-hero .dp-photo'), 'driver');
+    landCardPhoto($('#modalBody .dp-hero .dp-photo'), 'driver');
     if (!photo) upgradeHeroPhoto(driverObj);
-    const dossierBox = $('#modalBox');
-    if (dossierBox) dossierBox.scrollTop = 0;
-    const openTab = initModalTabs($('#modalBody'), {
-      career: () => loadDriverCareer(driverKey).then(c => {
-        renderCareerPane($('#dpCareer'), c, pal);
-      }).catch(() => {
-        const box = $('#dpCareer');
-        if (box?.isConnected) box.innerHTML = '<div class="empty">Карьера этого пилота недоступна: Jolpica не вернула данные.</div>';
+    const careerBox = $('#dpCareer');
+    initModalTabs($('#modalBody'), {
+      career: () => loadDriverCareer(driverKey).then(c => renderCareerPane(careerBox, c, pal)).catch(() => {
+        if (careerBox.isConnected) careerBox.innerHTML = '<div class="empty">Карьера этого пилота недоступна: Jolpica не вернула данные.</div>';
       })
     });
-    if (keep) {
-      if (keep.pane && keep.pane !== 'overview') openTab(keep.pane);
-      if (dossierBox) dossierBox.scrollTop = keep.top;
-    }
 
     if (window._driverModalTimer) clearTimeout(window._driverModalTimer);
     window._driverModalTimer = setTimeout(() => {
       const modalEl = document.getElementById('modal');
       const canvasEl = document.getElementById('driverProgressionChart');
       if (!modalEl || !modalEl.classList.contains('open') || !canvasEl || !canvasEl.isConnected) return;
-      renderDriverProgressionChart(id, 'driverProgressionChart', 'points');
+      const draw = () => {
+        if (active()) renderDriverProgressionChart(id, 'driverProgressionChart', $('#modalBody .prog-tab-btn.active')?.dataset.metric || 'points');
+      };
+      if (SnapshotStore.allDone) draw(); else SnapshotStore.whenAll().then(draw);
       computeTeammateBattle(targetSeason, current?.Driver?.driverId || canonId, bundle?.drivers, modalCtrl?.signal)
         .catch(() => null)
         .then(battle => {
           const box = document.getElementById('teammateBattleBox');
-          if (box && box.isConnected) box.innerHTML = renderTeammateBattleHtml(battle, current, targetSeason);
+          if (active() && box?.isConnected) box.innerHTML = renderTeammateBattleHtml(battle, current, targetSeason);
         });
       $$('.prog-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1029,23 +960,26 @@ async function showDriver(id, season = state.season, { silent = false } = {}) {
       });
     }, 50);
   } catch (err) {
+    if (!active()) return;
     console.error('[SHOWDRIVER_CATCH_ERROR]', err);
     openModal('<h2>Ошибка загрузки</h2>', '<div class="error-box">Не удалось загрузить профиль пилота. Проверьте соединение.</div>');
   }
 }
 
 async function showTeam(id, season = state.season) {
-  WinSeq.next();
+  const winSeq = WinSeq.next();
   if (!SnapshotStore.allDone) await SnapshotStore.whenAll();
+  if (WinSeq.n !== winSeq) return;
   const targetSeason = Number(season);
   Deep.next = { path: `team/${encodeURIComponent(id)}/${targetSeason}`, t: Date.now() };
-  openModal('<h2>Загрузка команды…</h2>', '<div class="loading">Получение показателей команды…</div>');
+  openModal('<h2>Загрузка команды…</h2>', '<div class="loading">Получение показателей команды…</div>', { dossier: true });
 
   try {
     let bundle = Object.values(state.pageData).find(x => x?.season === targetSeason && x.b?.teams?.some(t => t.Constructor?.constructorId === id))?.b;
     if (!bundle) {
       try { bundle = await loadSeasonBundle(targetSeason); } catch {}
     }
+    if (WinSeq.n !== winSeq) return;
     const t = bundle?.teams?.find(x => x.Constructor?.constructorId === id);
     if (!t) {
       openModal('<h2>Команда</h2>', '<div class="empty">Команда не найдена в выбранном сезоне.</div>');
@@ -1084,12 +1018,12 @@ async function showTeam(id, season = state.season) {
         </section>
         <section class="modal-pane" data-pane="pit"><div id="teamPitPane"><div class="loading">Считаем пит-стопы сезона…</div></div></section>
         <section class="modal-pane" data-pane="history"><div id="teamHistoryPane"><div class="loading">Собираем историю команды…</div></div></section>
-      </div>`
+      </div>`,
+      { dossier: true }
     );
-    $('#modal')?.classList.add('dossier');
     const box = $('#modalBox');
     if (box) box.scrollTop = 0;
-    PhotoFlight.land($('#modalBody .team-hero .team-logo img'), 'team');
+    landCardPhoto($('#modalBody .team-hero .team-logo img'), 'team');
 
     initModalTabs($('#modalBody'), {
       overview: () => { fillTeamSeasonPane(id, targetSeason, races, t); fillTeamLeadersPane(id, targetSeason); },
@@ -1097,6 +1031,7 @@ async function showTeam(id, season = state.season) {
       history: () => fillTeamHistoryPane(id, c, pal)
     });
   } catch (err) {
+    if (WinSeq.n !== winSeq) return;
     console.error('SHOWTEAM_ERROR:', err);
     openModal('<h2>Ошибка</h2>', '<div class="error-box">' + esc(err?.message || String(err)) + '</div>');
   }
@@ -1241,9 +1176,11 @@ function renderRaceTimelineHtml(events = [], circuitId = '') {
 async function showRace(round, season = state.season) {
   const winSeq = WinSeq.next();
   if (!SnapshotStore.allDone) await SnapshotStore.whenAll();
+  if (WinSeq.n !== winSeq) return;
   const targetSeason = Number(season) || state.season;
   Deep.next = { path: `race/${targetSeason}/${round}`, t: Date.now() };
   const memKey = `${targetSeason}::${round}`;
+  const cachedRace = _raceDetailsMemCache.get(memKey);
   // сохранённые ответы из IndexedDB читаем все сразу, а не по очереди (на слабом телефоне каждое чтение заметно)
   const idbCache = {};
   const idbGet = p => (idbCache[p] = idbCache[p] || ((typeof f1IdbStore !== 'undefined' && f1IdbStore.get) ? Promise.resolve(f1IdbStore.get(p)).catch(() => null) : Promise.resolve(null)));
@@ -1256,12 +1193,8 @@ async function showRace(round, season = state.season) {
     let qRes = null;
     let pRes = null;
 
-    if (_raceDetailsMemCache.has(memKey)) {
-      const mem = _raceDetailsMemCache.get(memKey);
-      race = mem.race;
-      rRes = mem.rRes;
-      qRes = mem.qRes;
-      pRes = mem.pRes;
+    if (cachedRace) {
+      ({ race, rRes, qRes, pRes } = cachedRace);
     }
 
     if (!race && state.calendar && (Number(state.season) === targetSeason || Number(state.seasons?.calendar) === targetSeason)) {
@@ -1331,6 +1264,7 @@ async function showRace(round, season = state.season) {
       }
     }
 
+    if (WinSeq.n !== winSeq) return;
     let hasKnownResults = Boolean(rRes?.data && readRaces(rRes.data)[0]?.Results?.length);
     const isPastSeason = targetSeason < 2025;
     const isFutureSeason = !hasKnownResults && Boolean(race) && !isRaceCompleted({ ...race, season: targetSeason });
@@ -1368,8 +1302,13 @@ async function showRace(round, season = state.season) {
         // результаты гонки уже есть: квалификацию и пит-стопы ждём не дольше 600 мс, окно открывается с тем, что есть,
         // а опоздавшие данные сети перерисуют его (если это окно ещё открыто)
         const all = Promise.allSettled(fetchJobs);
-        const inTime = await Promise.race([all.then(() => true), new Promise(r => setTimeout(() => r(false), 600))]);
-        if (!inTime) all.then(() => { if (WinSeq.n === winSeq && $('#modal')?.classList.contains('open')) showRace(round, season); });
+        const previousQual = qRes, previousPits = pRes;
+        const inTime = !cachedRace && await Promise.race([all.then(() => true), new Promise(r => setTimeout(() => r(false), 600))]);
+        if (!inTime) all.then(() => {
+          if (WinSeq.n !== winSeq || !$('#modal')?.classList.contains('open') || (qRes === previousQual && pRes === previousPits)) return;
+          _raceDetailsMemCache.set(memKey, { rRes, qRes, pRes, race });
+          showRace(round, season);
+        });
       } else {
         // данных этапа нет ни в снимке, ни в кэше: окно открывается сразу с загрузкой, чтобы нажатие не казалось потерянным
         openModal(`<h2>${esc(race ? ruGP(race.raceName) : `Этап ${round}`)}</h2><p class="subtle">Сезон ${targetSeason}</p>`, '<div class="loading">Загрузка результатов этапа…</div>');
@@ -1398,6 +1337,7 @@ async function showRace(round, season = state.season) {
       }
     }
 
+    if (WinSeq.n !== winSeq) return;
     if (!race && typeof HISTORICAL_STAGES !== 'undefined' && HISTORICAL_STAGES[targetSeason]?.[round]) {
       const h = HISTORICAL_STAGES[targetSeason][round];
       race = {
@@ -1663,6 +1603,7 @@ ${resultsTableHtml}
       _positionsLoaded = true;
       loadLapPositions(targetSeason, race, timelineInput.results, timelineInput.pitStops, timelineInput.raceControl, raceInsights.stints || raceInsights.stintsPromise)
         .then(model => {
+          if (WinSeq.n !== winSeq) return;
           window._lastRaceLapsModel = model;
           if (model?.stintsMap && Object.keys(model.stintsMap).length > 0 && (!raceInsights.stints || raceInsights.stints === 'UNAVAILABLE' || raceInsights.stints === 'ERROR')) {
             raceInsights.stints = model.stintsMap;
@@ -1670,7 +1611,7 @@ ${resultsTableHtml}
           renderPositionsChart('racePositionsBox', model);
           renderStrategyBox();
         })
-        .catch(() => renderPositionsChart('racePositionsBox', null));
+        .catch(() => { if (WinSeq.n === winSeq) renderPositionsChart('racePositionsBox', null); });
     };
 
     initModalTabs($('#modalBody'), {
@@ -1680,7 +1621,7 @@ ${resultsTableHtml}
         ensurePositionsLoaded('timelinePositionsHost');
         if (targetSeason < OPENF1_FIRST_SEASON) return;
         loadOvertakeEvents(targetSeason, race, timelineInput.results, timelineInput.pitStops).then(ev => {
-          if (!ev.length) return;
+          if (WinSeq.n !== winSeq || !ev.length) return;
           timelineInput.raceControl = [...timelineInput.raceControl.filter(e => e.type !== 'OVERTAKE'), ...ev];
           rerenderTimeline();
         }).catch(() => {});
@@ -1688,8 +1629,8 @@ ${resultsTableHtml}
       strategy: () => { moveStrategyBox('strategyPaneHost'); return ensureStintsLoaded(); },
       positions: () => ensurePositionsLoaded('positionsPaneHost'),
       telemetry: () => loadFastestLapTelemetry(targetSeason, race, timelineInput.results)
-        .then(tel => renderTelemetry('raceTelemetryBox', tel))
-        .catch(() => renderTelemetry('raceTelemetryBox', null))
+        .catch(() => null)
+        .then(tel => { if (WinSeq.n === winSeq) renderTelemetry('raceTelemetryBox', tel); })
     });
     $('#raceTabs')?.addEventListener('click', e => {
       const btn = e.target.closest('.modal-tab');
@@ -1767,28 +1708,25 @@ ${resultsTableHtml}
         ? 'Флаги дирекции гонки (SC / VSC / RED) публикуются OpenF1 начиная с сезона 2023.'
         : 'Загрузка сообщений дирекции гонки (OpenF1)…';
       loadRaceControlEvents(targetSeason, race).then(rc => {
-        const note = $('#raceControlSource');
-        if (!note || !note.isConnected) return;
+        if (!rcNote?.isConnected) return;
         if (rc.status !== 'OK') {
-          if (targetSeason >= OPENF1_FIRST_SEASON) note.textContent = 'Сообщения дирекции гонки для этого этапа не найдены в OpenF1.';
+          if (targetSeason >= OPENF1_FIRST_SEASON) rcNote.textContent = 'Сообщения дирекции гонки для этого этапа не найдены в OpenF1.';
           return;
         }
         const flagCount = rc.events.filter(e => e.rcCategory).length;
-        note.textContent = flagCount
+        rcNote.textContent = flagCount
           ? `Дирекция гонки: ${flagCount} событ. (SC / VSC / красный флаг), решения стюардов и аннулированные круги · источник OpenF1`
           : 'Дирекция гонки: Safety Car, VSC и красных флагов не было · источник OpenF1';
         timelineInput.raceControl = [...rc.events, ...timelineInput.raceControl.filter(e => e.type === 'OVERTAKE')];
         rerenderTimeline();
       }).catch(() => {
-        const note = $('#raceControlSource');
-        if (note && note.isConnected) note.textContent = 'OpenF1 недоступен: флаги дирекции гонки не загружены.';
+        if (rcNote?.isConnected) rcNote.textContent = 'OpenF1 недоступен: флаги дирекции гонки не загружены.';
       });
     }
 
     if (fetchJobs.length > 0 && rRes) {
       Promise.allSettled(fetchJobs).then(() => {
-        const modalOpen = $('#modal')?.classList.contains('open');
-        if (!modalOpen) return;
+        if (WinSeq.n !== winSeq || !$('#modal')?.classList.contains('open')) return;
         const currentTitle = $('#modalTitle h2')?.textContent;
         const expectedRuTitle = ruGP(race?.raceName || '');
         if (!currentTitle || (!currentTitle.includes(expectedRuTitle) && !currentTitle.includes(race?.raceName || ''))) return;
@@ -1838,10 +1776,11 @@ ${resultsTableHtml}
         }
       });
     }
-    if (!future && results.length && targetSeason >= OPENF1_FIRST_SEASON) {
+    if (!cachedRace && !future && results.length && targetSeason >= OPENF1_FIRST_SEASON) {
       await Promise.race([ensureStintsLoaded(), new Promise(r => setTimeout(r, 1800))]);
     }
   } catch (err) {
+    if (WinSeq.n !== winSeq) return;
     console.error('SHOWRACE_ERROR:', err);
     openModal('<h2>Ошибка</h2>', '<div class="error-box">Не удалось загрузить данные этапа. ' + esc(err?.message || '') + '</div>');
   }
@@ -1883,6 +1822,45 @@ function driverRadarHtml(data, color) {
       return `<div class="radar-ch"><span>${esc(d.label)} <small>${esc(d.text)}</small></span><span class="radar-ch-bar" aria-hidden="true"><i style="width:${pct}%"></i></span><b>${pct}%</b></div>`;
     }).join('')}</div>
     <p class="subtle chart-note">100% — лучший в сезоне <button type="button" class="info-tip" aria-label="Как считается профиль" aria-expanded="false"><span aria-hidden="true">i</span></button><span class="info-tip-body" hidden>100% — лучший показатель среди пилотов сезона. Считается по результатам этапов, которые есть во встроенных данных.</span></p></div></div>`;
+}
+
+async function landCardPhoto(target, kind) {
+  const f = PhotoFlight.from;
+  PhotoFlight.from = null;
+  if (!f || f.kind !== kind || Date.now() - f.t > 4000 || !target || Motion.reduced()) return;
+  const box = $('#modalBox');
+  const signal = window._modalAbortController?.signal;
+  if (!signal || signal.aborted || !target.animate) return;
+  const ghost = new Image();
+  ghost.alt = '';
+  ghost.className = 'photo-flight';
+  ghost.referrerPolicy = 'no-referrer';
+  ghost.src = f.src;
+  const stop = () => {
+    ghost.getAnimations().forEach(animation => animation.cancel());
+    ghost.remove();
+    target.classList.remove('flight-hide');
+  };
+  signal.addEventListener('abort', stop, { once: true });
+  // Скрываем портрет до первого кадра, чтобы он не мелькнул в шапке перед перелётом.
+  target.classList.add('flight-hide');
+  try {
+    await Promise.all(box.getAnimations().map(animation => animation.finished));
+    if (!target.isConnected || signal.aborted || box.scrollTop > 0) return;
+    const to = target.getBoundingClientRect();
+    if (!to.width || !to.height || to.bottom <= 0 || to.top >= innerHeight) return;
+    Object.assign(ghost.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px`,
+      objectFit: kind === 'team' ? 'contain' : 'cover', objectPosition: 'center top' });
+    document.body.appendChild(ghost);
+    box.addEventListener('scroll', stop, { once: true });
+    const from = `translate(${f.rect.left - to.left}px, ${f.rect.top - to.top}px) scale(${f.rect.width / to.width}, ${f.rect.height / to.height})`;
+    await ghost.animate([{ transform: from, borderRadius: f.radius }, { transform: 'none', borderRadius: '0px' }],
+      { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' }).finished;
+  } catch {} finally {
+    signal.removeEventListener('abort', stop);
+    box.removeEventListener('scroll', stop);
+    stop();
+  }
 }
 
 async function loadCircuitsPage() {
@@ -3058,17 +3036,28 @@ function renderChampionsArchive() {
   }));
 }
 
+function driverPhotoFallback(img) {
+  const hero = img.closest('.dp-hero');
+  if (!hero) return;
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar dp-avatar';
+  avatar.textContent = img.dataset.initials;
+  hero.classList.remove('has-photo');
+  img.replaceWith(avatar);
+}
+
 function upgradeHeroPhoto(driver) {
+  const hero = $('#modalBody .dp-hero');
   Headshots.load().then(() => {
-    const hero = $('.dp-hero');
     const url = Headshots.url(driver.code, 4);
-    if (!hero || !url || hero.querySelector('.dp-photo') || !$('#modal')?.classList.contains('open')) return;
+    if (!hero?.isConnected || !url || hero.querySelector('.dp-photo') || !$('#modal')?.classList.contains('open')) return;
     const img = document.createElement('img');
     img.className = 'dp-photo';
     img.alt = driverName(driver);
     img.referrerPolicy = 'no-referrer';
     img.onerror = () => { img.remove(); hero.classList.remove('has-photo'); };
     img.onload = () => { hero.classList.add('has-photo'); hero.querySelector('.dp-avatar')?.remove(); };
+    img.src = url;
     hero.insertBefore(img, hero.querySelector('.dp-id'));
   });
 }
@@ -3245,9 +3234,9 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
     <span class="hud-corner tl" aria-hidden="true"></span><span class="hud-corner tr" aria-hidden="true"></span><span class="hud-corner bl" aria-hidden="true"></span><span class="hud-corner br" aria-hidden="true"></span>
     <span class="dp-stripe"></span>
     ${num ? `<div class="dp-bignum" aria-hidden="true">${esc(num)}</div>` : ''}
-    ${photo ? `<img class="dp-photo${LoadedImgs.has(photo) ? ' loaded' : ''}" src="${photo}" alt="${esc(driverName(d))}" width="432" height="540" fetchpriority="high" referrerpolicy="no-referrer" onerror="this.remove();this.closest('.dp-hero')?.classList.remove('has-photo')">` : ''}
+    ${photo ? `<img class="dp-photo${LoadedImgs.has(photo) ? ' loaded' : ''}" src="${esc(photo)}" alt="${esc(driverName(d))}" width="432" height="540" fetchpriority="high" referrerpolicy="no-referrer" data-initials="${esc(initials)}" onerror="driverPhotoFallback(this)">` : ''}
+    ${photo ? '' : `<div class="avatar dp-avatar" data-wiki="${esc(d.url || '')}">${esc(initials)}</div>`}
     <div class="dp-id">
-      ${photo ? '' : `<div class="avatar dp-avatar" data-wiki="${esc(d.url || '')}">${esc(initials)}</div>`}
       <div class="dp-name">
         <div class="dp-team"><i></i>${esc(teamName)} · сезон ${season}</div>
         <h2><span>${esc(d.givenName || '')}</span>${esc(d.familyName || '')}</h2>

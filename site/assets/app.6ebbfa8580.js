@@ -1961,10 +1961,12 @@ const NavMotion = {
     if (!this.container) return;
     this.indicator = this.container.querySelector('.nav-indicator');
     this.update(false);
+    document.fonts?.ready.then(() => this.update(false));
 
     if (window.ResizeObserver) {
       this.observer = new ResizeObserver(() => this.update(false));
       this.observer.observe(this.container);
+      this.container.querySelectorAll('[data-tab]').forEach(tab => this.observer.observe(tab));
     } else {
       window.addEventListener('resize', () => this.update(false), { passive: true });
     }
@@ -2060,14 +2062,13 @@ async function loadImage(el) {
     const title = decodeURIComponent(url.split('/wiki/')[1] || '');
     const cache = state.imageCache.drivers.get(title);
     const data = cache || await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`).then(r => r.ok ? r.json() : null);
-    if (data?.thumbnail?.source) {
+    if (data?.thumbnail?.source && el.isConnected && el.dataset.wiki === url) {
       state.imageCache.drivers.set(title, data);
       const img = document.createElement('img');
       img.src = data.thumbnail.source;
       img.alt = `Фото ${el.parentElement?.querySelector('h3')?.textContent || 'пилота'}`;
-      img.className = 'avatar';
-      img.loading = 'lazy';
-      el.replaceWith(img);
+      img.className = 'wiki-photo loaded';
+      img.onload = () => { if (el.dataset.wiki === url && el.isConnected) el.replaceChildren(img); };
     }
   } catch {
     el.removeAttribute('data-wiki');
@@ -3119,18 +3120,31 @@ function renderCircuitCatalog() {
 
 let lastModalFocus = null;
 let lockedScrollY = 0;
+let modalScrollRestoration = null;
+
+function restoreModalHistoryScrollMode() {
+  // Браузер восстанавливает прокрутку после popstate. До конца этого шага позицией управляет closeModal.
+  requestAnimationFrame(() => {
+    if (modalScrollRestoration !== null && !window._modalHistoryEntry) {
+      history.scrollRestoration = modalScrollRestoration;
+      modalScrollRestoration = null;
+    }
+  });
+}
 
 function pushModalHistoryEntry() {
   try {
+    if (modalScrollRestoration === null) modalScrollRestoration = history.scrollRestoration;
+    history.scrollRestoration = 'manual';
     history.pushState({ overlay: 'modal' }, '');
     window._modalHistoryEntry = true;
   } catch {}
 }
 
-function openModal(title, body) {
+function openModal(title, body, { dossier = false } = {}) {
   const modal = $('#modal');
   if (!modal) return;
-  modal.classList.remove('dossier');
+  modal.classList.toggle('dossier', dossier);
   if (!window._modalHistoryEntry) {
     if (window._modalBackPending) window._modalPushAfterBack = true;
     else pushModalHistoryEntry();
@@ -3233,6 +3247,7 @@ function closeModal({ fromPopState = false } = {}) {
   window._modalPushAfterBack = false;
   if (fromPopState) {
     window._modalHistoryEntry = false;
+    restoreModalHistoryScrollMode();
   } else if (window._modalHistoryEntry) {
     window._modalHistoryEntry = false;
     window._modalBackPending = true;
@@ -3300,14 +3315,14 @@ function closeModal({ fromPopState = false } = {}) {
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.classList.remove('modal-open');
-  window.scrollTo(0, lockedScrollY);
+  window.scrollTo({ top: lockedScrollY, behavior: 'instant' });
 
   if (mb) mb.innerHTML = '';
   const mt = $('#modalTitle');
   if (mt) mt.innerHTML = '';
 
   if (lastModalFocus && typeof lastModalFocus.focus === 'function') {
-    try { lastModalFocus.focus(); } catch(e) {}
+    try { lastModalFocus.focus({ preventScroll: true }); } catch(e) {}
   }
   lastModalFocus = null;
 }
@@ -3319,10 +3334,8 @@ async function showCircuit(...args) { const self = showCircuit; await LazyMod.lo
 
 
 // Результаты одного пилота по этапам сезона: архивные сезоны из снимка, текущий из сети (сеть в приоритете).
-// quick: если сеть отвечает дольше QUICK_MS, сразу отдаём снимок, а ответ сети передаём в onFresh(rounds) —
-// окно перерисуется сетевыми данными, если они отличаются (так окно не висит пустым на медленной сети).
-const QUICK_MS = 350;
-async function loadDriverSeasonRounds(season, driverId, signal = null, { quick = false, onFresh = null } = {}) {
+// Если для окна уже есть снимок, показываем его сразу и передаём уточнения сети в onFresh.
+async function loadDriverSeasonRounds(season, driverId, signal = null, { onFresh = null } = {}) {
   const add = (map, rc, key, row) => {
     const entry = map.get(String(rc.round)) || { round: Number(rc.round), raceName: rc.raceName, date: rc.date };
     entry[key] = row;
@@ -3340,35 +3353,35 @@ async function loadDriverSeasonRounds(season, driverId, signal = null, { quick =
     });
     return map;
   };
-  const fromNetwork = async map => {
+  const fromNetwork = async fallback => {
+    const map = new Map();
     const [res, qual] = await Promise.allSettled([
       request(`${season}/drivers/${driverId}/results.json?limit=100`, { signal }),
       request(`${season}/drivers/${driverId}/qualifying.json?limit=100`, { signal })
     ]);
-    if (res.status === 'fulfilled') readRaces(res.value.data).forEach(rc => (rc.Results || []).forEach(x => add(map, rc, 'race', x)));
-    if (qual.status === 'fulfilled') readRaces(qual.value.data).forEach(rc => (rc.QualifyingResults || []).forEach(x => add(map, rc, 'qual', x)));
+    for (const [response, key, field] of [[res, 'race', 'Results'], [qual, 'qual', 'QualifyingResults']]) {
+      const races = response.status === 'fulfilled' && response.value.data?.MRData?.RaceTable?.Races;
+      if (Array.isArray(races)) {
+        for (const rc of races) for (const row of rc[field] || []) add(map, rc, key, row);
+      } else {
+        for (const rc of fallback.values()) if (rc[key]) add(map, rc, key, rc[key]);
+      }
+    }
     return map;
   };
   if (!isLiveSeasonPath(String(season))) {
     const snap = fromSnapshot(new Map());
     return snap.size ? snap : fromNetwork(new Map());
   }
-  const netDone = fromNetwork(new Map());
-  if (quick) {
-    const won = await Promise.race([netDone.then(() => true), new Promise(r => setTimeout(() => r(false), QUICK_MS))]);
-    if (!won) {
-      const snap = fromSnapshot(new Map());
-      if (snap.size) {
-        netDone.then(net => { if (net.size && onFresh) onFresh(net); }).catch(() => {});
-        return snap;
-      }
-    }
+  const snap = fromSnapshot(new Map());
+  // Сеть уточняет известные поля. Отказ одного из двух запросов не стирает квалификацию или гонку из снимка.
+  const net = fromNetwork(snap);
+  if (snap.size && onFresh) {
+    net.then(rounds => { if (!signal?.aborted) onFresh(rounds); }).catch(() => {});
+    return snap;
   }
-  const net = await netDone;
-  return net.size ? net : fromSnapshot(new Map());
+  return net;
 }
-
-// Короткая подпись результатов по этапам: по ней видно, отличается ли ответ сети от того, что уже нарисовано
 
 
 
@@ -5005,6 +5018,7 @@ const PhotoFlight = {
   from: null,
   init() {
     document.addEventListener('click', e => {
+      this.from = null;
       const card = e.target.closest?.('.driver-card, .team-card, tr[data-driver], tr[data-team]');
       if (!card || e.target.closest('.fav-btn')) { return; }
       const team = card.matches('.team-card, tr[data-team]');
@@ -5014,33 +5028,9 @@ const PhotoFlight = {
       if (!r.width) return;
       this.from = { kind: team ? 'team' : 'driver', src: src.currentSrc || src.src, rect: r, radius: getComputedStyle(team ? src : (src.closest('.avatar') || src)).borderRadius, t: Date.now() };
     }, true);
-  },
-  async land(target, kind) {
-    const f = this.from;
-    this.from = null;
-    if (!f || f.kind !== kind || Date.now() - f.t > 4000 || !target || Motion.reduced()) return;
-    // ждём, пока окно доедет (анимация открытия), чтобы лететь в настоящее место
-    const box = $('#modalBox');
-    try { await Promise.all((box?.getAnimations?.() || []).map(a => a.finished)); } catch {}
-    if (!target.isConnected) return;
-    const to = target.getBoundingClientRect();
-    if (!to.width || !to.height || to.bottom < 0 || to.top > window.innerHeight) return;
-    const ghost = new Image();
-    ghost.src = f.src; ghost.alt = ''; ghost.className = 'photo-flight';
-    ghost.referrerPolicy = 'no-referrer';
-    ghost.style.objectFit = kind === 'team' ? 'contain' : 'cover';
-    document.body.appendChild(ghost);
-    target.classList.add('flight-hide');
-    const frame = r => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-    try {
-      await ghost.animate([{ ...frame(f.rect), borderRadius: f.radius }, { ...frame(to), borderRadius: kind === 'team' ? '0px' : '0px' }],
-        { duration: 420, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' }).finished;
-    } catch {}
-    target.classList.remove('flight-hide');
-    try { await ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }).finished; } catch {}
-    ghost.remove();
   }
 };
+
 
 // iPhone: окно-шторка закрывается свайпом вниз (когда оно прокручено к началу), а в приложении с экрана «Домой»
 // свайп от левого края работает как «назад» (в самом Safari этот жест и так есть у браузера, поэтому там не включается)
@@ -5535,8 +5525,11 @@ async function switchTab(tab, { fromPopState = false } = {}) {
   } else swapPanels();
 
   if (gen === state._tabGeneration) {
-    $$('#nav :is(button,a)').forEach(b => { b.classList.toggle('active', b.dataset.tab === tab); if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-    $$('#bottomNav a[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    $$('#nav [data-tab], #bottomNav [data-tab], #moreSheet [data-tab]').forEach(link => {
+      const selected = link.dataset.tab === tab;
+      link.classList.toggle('active', selected);
+      if (selected) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+    });
     const secondaryTabs = ['circuits', 'teams', 'compare', 'my', 'history'];
     const isSecondary = secondaryTabs.includes(tab);
     const tabNames = { home: 'Обзор', standings: 'Турнир', calendar: 'Календарь', circuits: 'Трассы', drivers: 'Пилоты', teams: 'Команды', compare: 'Сравнение', my: 'Моё', history: 'История' };
@@ -5570,7 +5563,7 @@ async function switchTab(tab, { fromPopState = false } = {}) {
     history: 'Все чемпионы мира Формулы‑1 с 1950 года и итоговые таблицы любого сезона.'
   };
   document.querySelector('meta[name="description"]')?.setAttribute('content', tabDesc[tab] || tabDesc.home);
-  window.scrollTo(0, 0);
+  window.scrollTo({ top: 0, behavior: 'instant' });
   NavMotion.update(true);
 
   if (tab === 'home') await loadHome({ signal: tabSignal });
@@ -6917,6 +6910,7 @@ function initNavigation() {
   window.addEventListener('popstate', () => {
     if (window._modalBackPending) {
       window._modalBackPending = false;
+      restoreModalHistoryScrollMode();
       if (window._modalPushAfterBack) {
         window._modalPushAfterBack = false;
         if ($('#modal')?.classList.contains('open')) pushModalHistoryEntry();
@@ -7085,8 +7079,7 @@ const Motion = {
   init() {
     document.addEventListener('load', e => { const t = e.target; if (t && t.tagName === 'IMG') { t.classList.add('loaded'); LoadedImgs.add(t.getAttribute('src')); } }, true);
     document.addEventListener('pointerdown', e => {
-      const card = e.target.closest?.('.driver-card, .team-card, .race-card, .track-catalog-card, .champ-chip, .stage-card');
-      this.last = { x: e.clientX, y: e.clientY, t: Date.now(), rect: card ? card.getBoundingClientRect() : null };
+      this.last = { x: e.clientX, y: e.clientY, t: Date.now() };
     }, true);
     if (this.reduced()) return;
     const main = document.querySelector('main');
@@ -7162,19 +7155,6 @@ const Motion = {
       const oy = Math.min(100, Math.max(0, (m.y - r.top) / Math.max(1, r.height) * 100));
       box.style.setProperty('--mo-x', ox.toFixed(1) + '%');
       box.style.setProperty('--mo-y', oy.toFixed(1) + '%');
-      // desktop: the window grows out of the card that was pressed (card -> window); the phone keeps its bottom sheet
-      const c = m.rect;
-      if (c && window.innerWidth > 768 && !this.reduced() && box.animate && (!navigator.webdriver || window.__f1ForceVT)) {
-        const sx = Math.max(.15, c.width / Math.max(1, r.width)), sy = Math.max(.08, c.height / Math.max(1, r.height));
-        const dx = c.left + c.width / 2 - (r.left + r.width / 2), dy = c.top + c.height / 2 - (r.top + r.height / 2);
-        box.style.animation = 'none';
-        const a = box.animate([
-          { transform: `translate(${dx.toFixed(0)}px, ${dy.toFixed(0)}px) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`, opacity: .35 },
-          { transform: 'none', opacity: 1 }
-        ], { duration: 340, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
-        a.onfinish = a.oncancel = () => { box.style.animation = ''; };
-        box.dataset.morph = '1';
-      }
     } else {
       box.style.removeProperty('--mo-x');
       box.style.removeProperty('--mo-y');
@@ -7587,6 +7567,7 @@ const Headshots = {
 try { Headshots.prime(); } catch {}
 
 
+
 function paintHeadshots() {
   if (!Headshots.map) return;
   $$('.avatar[data-code]').forEach(el => {
@@ -7596,7 +7577,13 @@ function paintHeadshots() {
     el.dataset.photo = '1';
     el.removeAttribute('data-wiki');
     el.classList.add('has-photo');
-    el.innerHTML = `<img src="${url}" alt="" width="64" height="64" referrerpolicy="no-referrer" onerror="this.remove();this.parentNode&&this.parentNode.classList.remove('has-photo')">`;
+    const fallback = [...el.childNodes];
+    const img = new Image(64, 64);
+    img.alt = '';
+    img.referrerPolicy = 'no-referrer';
+    img.onerror = () => { el.replaceChildren(...fallback); el.classList.remove('has-photo'); };
+    img.src = url;
+    el.replaceChildren(img);
   });
 }
 

@@ -146,6 +146,7 @@ html {
   min-width: 0;
   overflow-x: hidden;
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
   scroll-padding-top: calc(88px + env(safe-area-inset-top));
   -webkit-text-size-adjust: 100%;
 }
@@ -463,16 +464,21 @@ nav::-webkit-scrollbar { display: none; }
 .nav-inner {
   max-width: 1260px;
   margin: auto;
-  padding: 4px 22px;
+  padding: 4px clamp(8px, 1.7vw, 22px);
   display: flex;
   align-items: center;
   gap: 4px;
   position: relative;
 }
+#nav > a { flex: 1 0 auto; justify-content: center; }
+@media (min-width: 721px) and (max-width: 950px) {
+  #nav { padding-inline: 6px; gap: 2px; }
+  #nav > a { padding-inline: 3px; gap: 3px; }
+}
 .nav-indicator {
   position: absolute;
-  top: 6px;
-  bottom: 6px;
+  top: 4px;
+  bottom: 4px;
   left: 0;
   border-radius: 9px;
   background: var(--red);
@@ -812,6 +818,7 @@ tbody tr:active {
   border: 1px solid var(--line);
   flex: 0 0 auto;
 }
+.avatar .wiki-photo { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .driver-top h3 { margin: 0; font-size: var(--fs-16); }
 .driver-top p { margin: 2px 0 0; color: var(--muted); font-size: var(--fs-12); }
 .driver-num {
@@ -2299,7 +2306,7 @@ th.sortable::after {
   to { opacity: 1; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 }
 @keyframes modalBoxPopIn {
-  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  from { opacity: 0; transform: scale(0.985) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .modal-head {
@@ -2331,6 +2338,10 @@ html, body {
   overflow-x: hidden !important;
   max-width: 100vw !important;
   width: 100% !important;
+}
+@media (min-width: 721px) {
+  /* hidden превращает body в контейнер прокрутки и уводит липкую шапку за верх экрана. */
+  body { overflow-x: clip !important; }
 }
 @media (max-width: 768px) {
   .hero {
@@ -3241,7 +3252,8 @@ html.has-favs #favCard { min-height: 120px; }
 /* the sector legend is filled in a moment after first paint: reserve its height so the hero does not grow (CLS) */
 @media (min-width: 901px) { .hero-next #heroSectorsLegend { min-height: 94px; align-content: flex-start; } }
 nav a[data-tab], .bottom-nav a[data-tab], .more-sheet a[data-tab] { text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.more-sheet a[data-tab] { display: block; }
+.more-sheet a[data-tab] { display: flex; }
+.more-sheet a[aria-current="page"] { box-shadow: inset 3px 0 var(--red); }
 .live-card.quiet { border-color: var(--line); box-shadow: none; padding: 10px 16px; }
 .live-card.quiet .live-head { margin-bottom: 4px; }
 .live-card.quiet .live-head h2 { font-size: .9rem; font-weight: 700; color: var(--muted); }
@@ -3290,7 +3302,11 @@ body { font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1; -webkit-font-smoothi
 @media (max-width: 720px) { .page-head p { font-size: var(--fs-14); } .page-head { padding-bottom: 10px; } }
 
 .modal.dossier .modal-box { padding: 0 !important; max-width: 920px !important; }
-.modal.dossier .modal-head { position: absolute !important; top: 10px; right: 10px; z-index: 9; margin: 0 !important; padding: 0 !important; border: 0 !important; width: auto; }
+.modal.dossier .modal-head { background: transparent; position: absolute !important; top: 10px; right: 10px; z-index: 9; margin: 0 !important; padding: 0 !important; border: 0 !important; width: auto; }
+.modal.dossier .modal-box { height: 90vh; }
+@media (max-width: 768px) {
+  .modal.dossier .modal-box { height: 94vh; margin: auto auto 0 !important; }
+}
 .modal.dossier #modalTitle { display: none; }
 .modal.dossier .modal-head .close { width: 44px; height: 44px; border-radius: 50%; background: #161920 !important; color: #fff !important; }
 .modal.dossier #modalBody { padding: 0; }
@@ -3831,7 +3847,7 @@ header.page-head {
 }
 .pod { border-top: 3px solid var(--tc, var(--red)); }
 .pod-num, [data-theme="light"] .pod-num { color: var(--muted) !important; }
-.brand-mark, nav :is(button,a).active, .bottom-nav :is(button,a).active, .cal-filter-btn.active {
+.brand-mark, .bottom-nav :is(button,a).active, .cal-filter-btn.active {
   background-color: var(--red) !important;
   background-image: none !important;
   color: #ffffff !important;
@@ -4608,9 +4624,12 @@ body.sheet-open { overflow: hidden; }
 
 /* Раунд 10, этап 3: шапка личного дела. Фото справа, на фото ничего не лежит; звезда в ряд с кнопками окна */
 .dp-hero > .fav-btn.lg, .modal.dossier .dp-hero > .fav-btn.lg { position: absolute; right: 156px !important; top: 10px !important; z-index: 5; color: #fff; }
-.dp-hero.has-photo .dp-id, .dp-hero.team-hero .dp-id { max-width: 56%; padding-right: 0; }
-.dp-hero.has-photo .dp-signature { max-width: 56%; }
+.dp-hero .dp-id { max-width: 56%; padding-right: 0; }
+.dp-hero:not(.team-hero) .dp-signature { max-width: 56%; }
+.dp-hero > .dp-avatar { position: absolute; z-index: 2; right: 12%; top: 64px; }
+.dp-hero.has-photo > .dp-avatar { display: none; }
 .dp-name .dp-titles { display: block; min-height: 0; margin: 8px 0 0; padding: 0; border: 0; background: none; }
+.dp-name .dp-titles { --gold: #ffce66; }
 .dp-name .dp-titles b { display: inline; font: 800 var(--fs-13)/1.2 var(--font-display); color: var(--gold); text-transform: uppercase; letter-spacing: .04em; }
 .dp-name .dp-titles small { display: block; margin-top: 2px; color: #e2e8f0; font-size: var(--fs-12); }
 .dp-signature { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 8px; }
@@ -4626,11 +4645,11 @@ body.sheet-open { overflow: hidden; }
   /* фото: 38% ширины сверху справа, кадр по лицу; текст слева не заходит под фото, ряд квадратиков ниже фото */
   .dp-hero.has-photo .dp-photo { top: 48px; bottom: auto; right: 0; width: 38%; height: auto; aspect-ratio: 4 / 5; max-height: none; object-fit: cover; object-position: center top; }
   /* высота колонки текста = высота фото (ширина шапки × 0,38 × 5/4), считается от ширины самой шапки */
-  .dp-hero.has-photo { container-type: inline-size; }
-  .dp-hero.has-photo .dp-id { max-width: 60%; min-height: calc(47.5cqw + 4px); align-items: flex-start; }
+  .dp-hero:not(.team-hero) { container-type: inline-size; }
+  .dp-hero:not(.team-hero) .dp-id { max-width: 60%; min-height: calc(47.5cqw + 4px); align-items: flex-start; }
   /* текст шапки начинается под рядом кнопок окна (звезда, картинка, ссылка, закрыть) */
   .dp-hero:not(.team-hero) { padding-top: 54px; }
-  .dp-hero.has-photo .dp-signature, .dp-hero .dp-signature { max-width: 100%; margin-top: 12px; }
+  .dp-hero:not(.team-hero) .dp-signature, .dp-hero .dp-signature { max-width: 100%; margin-top: 12px; }
   .dp-hero.has-photo .dp-bignum { right: 40%; }
   .dp-signature { grid-template-columns: 58px repeat(3, minmax(0, 1fr)); gap: 6px; }
   .dp-signature .dp-plate { padding: 6px 8px; justify-content: center; }
@@ -4683,7 +4702,7 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 .modal.open .modal-box { animation-fill-mode: backwards !important; }
 .last-race-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 /* перелёт фото из списка в шапку окна */
-.photo-flight { position: fixed; z-index: 5000; margin: 0; pointer-events: none; will-change: left, top, width, height; }
+.photo-flight { position: fixed; z-index: 5000; margin: 0; pointer-events: none; transform-origin: top left; will-change: transform, opacity; }
 .flight-hide { visibility: hidden !important; }
 /* руководство на карточках «Команд» — такие же кружки, как в окне команды, в цветах карточки */
 .team-card .leaders { gap: 6px; align-items: flex-start; }
@@ -4809,7 +4828,7 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
   #compareResult .stat { padding: 8px 10px; }
 
   /* окно гонки: вкладки окна уходят за край — край затухает, видно, что их можно листать */
-  .modal-box:not(.dp-box) .modal-tabs { -webkit-mask-image: linear-gradient(to right, #000 86%, transparent); mask-image: linear-gradient(to right, #000 86%, transparent); padding-right: 24px; }
+  #raceTabs { -webkit-mask-image: linear-gradient(to right, #000 86%, transparent); mask-image: linear-gradient(to right, #000 86%, transparent); padding-right: 24px; }
 }
 
 /* Раунд 10, этап 5: монитор */
