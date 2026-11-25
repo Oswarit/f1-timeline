@@ -3079,7 +3079,7 @@ nav :is(button,a).active, .modal-tab.active, .btn:not(.secondary), .skip-link { 
 .season-map:is([data-region="americas"],[data-region="asia"]) .sm-pin circle.ring { r: 6px; }
 .season-map.draw .pin-in { animation: smPin .45s ease both; animation-delay: calc(var(--i, 0) * 90ms); }
 @keyframes smPin { from { opacity: 1; transform: translate3d(0, -6px, 0); } to { opacity: 1; transform: none; } }
-.sm-tip { position: absolute; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line-strong); font-size: var(--fs-12); line-height: 1.35; white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); z-index: 3; }
+.sm-tip { position: absolute; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line-strong); font-size: var(--fs-12); line-height: 1.35; width: max-content; max-width: 100%; overflow-wrap: anywhere; transform: translateY(calc(-100% - 12px)); z-index: 3; }
 .sm-tip b { display: block; }
 .sm-tip small { color: var(--muted); }
 .sm-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: var(--fs-12); color: var(--muted); }

@@ -4066,6 +4066,8 @@ document.addEventListener('change', e => {
 
 
 async function renderSeasonMap(...args) { const self = renderSeasonMap; await LazyMod.load(); if (renderSeasonMap === self) throw new Error("renderSeasonMap: second script missing"); return renderSeasonMap(...args); }
+
+
 const SeasonMap = {
   LAT_TOP: 72, _rafId: null, _vbRaf: null, _currentRegion: 'world',
   REGIONS: {
@@ -4120,22 +4122,6 @@ const SeasonMap = {
       const b = e.target.closest('.sm-reg-btn');
       if (b) this.setRegion(b.dataset.region);
     });
-  },
-  pinAt(svg, x, y) {
-    // Measure in CSS pixels so the touch radius stays the same at every zoom level.
-    // Choose by distance to the marker, rather than by SVG paint order.
-    const bounds = svg.getBoundingClientRect();
-    let best = null, distance = 22;
-    for (const pin of svg.querySelectorAll('.sm-pin[tabindex="0"]')) {
-      const center = pin.getScreenCTM();
-      if (!center || center.e < bounds.left || center.e > bounds.right || center.f < bounds.top || center.f > bounds.bottom) continue;
-      const delta = Math.hypot(x - center.e, y - center.f);
-      if (delta < distance) {
-        best = pin;
-        distance = delta;
-      }
-    }
-    return best;
   },
   animateFlightpath(box) {
     this.stopAnimation();
@@ -4218,34 +4204,7 @@ const SeasonMap = {
     if (!Motion.reduced()) { void box.offsetWidth; box.classList.add('draw'); }
     this.animateFlightpath(box);
     this.setRegion(this._currentRegion, true);
-    if (!box.dataset.bound) {
-      box.dataset.bound = '1';
-      const hide = () => { box.querySelector('.sm-tip').hidden = true; };
-      const open = pin => showRace(pin.dataset.race, Number(pin.dataset.season));
-      const show = pin => {
-        const tip = box.querySelector('.sm-tip');
-        const r = pin.getBoundingClientRect(), b = box.getBoundingClientRect();
-        tip.innerHTML = `<b>${esc(pin.dataset.name)}</b><small>Этап ${esc(pin.dataset.race)} · ${esc(pin.dataset.place)}</small>`;
-        tip.style.left = `${r.left - b.left + r.width / 2}px`; tip.style.top = `${r.top - b.top}px`; tip.hidden = false;
-      };
-      box.addEventListener('pointerover', e => { const pin = e.target.closest('.sm-pin'); if (pin) show(pin); });
-      box.addEventListener('pointerout', e => { if (e.target.closest('.sm-pin')) hide(); });
-      box.addEventListener('focusin', e => { const pin = e.target.closest('.sm-pin'); if (pin) show(pin); });
-      box.addEventListener('focusout', hide);
-      box.addEventListener('click', e => {
-        const svg = e.target.closest('svg');
-        if (!svg) return;
-        const pin = e.detail === 0 ? e.target.closest('.sm-pin[tabindex="0"]') : this.pinAt(svg, e.clientX, e.clientY);
-        if (pin) open(pin);
-      });
-      box.addEventListener('keydown', e => {
-        const pin = e.target.closest('.sm-pin[tabindex="0"]');
-        if (pin && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          open(pin);
-        }
-      });
-    }
+    return true;
   }
 };
 
@@ -4844,15 +4803,36 @@ const ChampThumb = {
 };
 
 
+function overlayKeydown(e, root, close) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    close();
+  }
+  if (e.key !== 'Tab') return;
+  const items = root.querySelectorAll('input, button:not([disabled]), a[href]');
+  const first = items[0], last = items[items.length - 1];
+  if (document.activeElement === (e.shiftKey ? first : last)) {
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
+  }
+}
+
 // "More" sheet on the phone: the page under it does not scroll, Esc and a swipe down close it
 const MoreSheet = {
   el() { return $('#moreSheet'); },
   set(open) {
-    const el = this.el(); if (!el) return;
+    const el = this.el();
+    if (!el || el.classList.contains('open') === open) return;
+    const trigger = $('#bottomMore');
+    const box = el.querySelector('.more-sheet-box');
+    if (!open && el.contains(document.activeElement)) trigger?.focus({ preventScroll: true });
     el.classList.toggle('open', open);
+    el.setAttribute('aria-hidden', String(!open));
     document.body.classList.toggle('sheet-open', open);
-    $('#bottomMore')?.setAttribute('aria-expanded', String(open));
-    const box = el.querySelector('.more-sheet-box'); if (box) box.style.transform = '';
+    trigger?.setAttribute('aria-expanded', String(open));
+    if (box) box.style.transform = '';
+    if (open) box?.querySelector('a[href]')?.focus({ preventScroll: true });
   },
   toggle() { this.set(!this.el()?.classList.contains('open')); },
   close() { this.set(false); },
@@ -4863,7 +4843,7 @@ const MoreSheet = {
     $('#bottomMore')?.setAttribute('aria-expanded', 'false');
     $('#bottomMore')?.setAttribute('aria-controls', 'moreSheet');
     el.addEventListener('click', e => { if (e.target === el) this.close(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && el.classList.contains('open')) this.close(); });
+    el.addEventListener('keydown', e => overlayKeydown(e, el, () => this.close()));
     let y0 = null, dy = 0;
     box.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
     box.addEventListener('touchmove', e => { if (y0 === null) return; dy = Math.max(0, e.touches[0].clientY - y0); box.style.transform = dy ? `translateY(${dy}px)` : ''; }, { passive: true });
@@ -5912,7 +5892,7 @@ function initEvents() {
   $('#compareSeason')?.addEventListener('change', loadComparePage);
   $('#compareA')?.addEventListener('change', renderComparison);
   $('#compareB')?.addEventListener('change', renderComparison);
-  $('#mySeason')?.addEventListener('change', loadMyPage);
+  $('#mySeason')?.addEventListener('change', () => loadMyPage({ stats: false }));
   $('#compareSwap')?.addEventListener('click', () => {
     const a = $('#compareA').value;
     $('#compareA').value = $('#compareB').value;
@@ -6866,17 +6846,36 @@ function tabFromHash() {
   return null;
 }
 
+const DRIVER_SEARCH_RU = {
+  albon: 'Александр Албон', alonso: 'Фернандо Алонсо', antonelli: 'Кими Антонелли',
+  bearman: 'Оливер Берман', bortoleto: 'Габриэл Бортолето Габриэль Бортолето',
+  bottas: 'Валттери Боттас', camara: 'Рафаэл Камара Рафаэль Камара',
+  colapinto: 'Франко Колапинто', gasly: 'Пьер Гасли', hadjar: 'Исак Хаджар',
+  hamilton: 'Льюис Хэмилтон Льюис Хемилтон', hirakawa: 'Рё Хиракава',
+  hulkenberg: 'Нико Хюлькенберг', lawson: 'Лиам Лоусон', leclerc: 'Шарль Леклер',
+  lindblad: 'Арвид Линдблад', norris: 'Ландо Норрис', ocon: 'Эстебан Окон',
+  perez: 'Серхио Перес', piastri: 'Оскар Пиастри', russell: 'Джордж Расселл Джордж Рассел',
+  sainz: 'Карлос Сайнс', stroll: 'Лэнс Стролл Ланс Стролл',
+  tsunoda: 'Юки Цунода', max_verstappen: 'Макс Ферстаппен Макс Верстаппен'
+};
+
+function normalizeSearch(value) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+
 function buildSearchIndex() {
   const items = [];
   const seen = new Set();
   const push = item => {
     if (seen.has(item.key)) return;
     seen.add(item.key);
+    item.searchText = normalizeSearch(`${item.title} ${item.sub} ${item.alias || ''}`);
     items.push(item);
   };
   (state.standings?.drivers || []).forEach(d => push({
     key: `d:${d.Driver.driverId}`, kind: 'Пилот', title: driverName(d.Driver),
     sub: `${d.Constructors?.[0]?.name || ''} · P${d.position} · ${fmtNum(d.points)} очк.`,
+    alias: DRIVER_SEARCH_RU[d.Driver.driverId],
     open: () => showDriver(d.Driver.driverId, state.season)
   }));
   (state.standings?.teams || []).forEach(t => push({
@@ -6900,9 +6899,13 @@ function buildSearchIndex() {
   return items;
 }
 
+let searchReturnFocus, searchAfterBack;
+
 function openSearch() {
   const dlg = $('#searchDialog');
-  if (!dlg || dlg.classList.contains('open')) return;
+  if (!dlg || dlg.classList.contains('open') || searchAfterBack) return;
+  MoreSheet.close();
+  searchReturnFocus = document.activeElement;
   dlg.classList.add('open');
   dlg.setAttribute('aria-hidden', 'false');
   const input = $('#searchInput');
@@ -6913,19 +6916,34 @@ function openSearch() {
   history.pushState({ overlay: 'search' }, '');
 }
 
-function closeSearch(fromPopState = false) {
+function closeSearch(fromPopState = false, onClose = null) {
   const dlg = $('#searchDialog');
   if (!dlg?.classList.contains('open')) return;
+  const trigger = searchReturnFocus;
+  searchReturnFocus = null;
+  if (dlg.contains(document.activeElement)) document.activeElement.blur();
   dlg.classList.remove('open');
   dlg.setAttribute('aria-hidden', 'true');
-  if (!fromPopState && history.state?.overlay === 'search') history.back();
+  const finish = () => {
+    (trigger?.getClientRects().length && trigger !== document.body ? trigger : $('#searchBtn'))?.focus({ preventScroll: true });
+    onClose?.();
+  };
+  if (!fromPopState && history.state?.overlay === 'search') {
+    searchAfterBack = finish;
+    history.back();
+  } else if (fromPopState) {
+    setTimeout(finish, 0);
+  } else finish();
 }
 
 function renderSearchResults(q) {
   const box = $('#searchResults');
-  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const query = norm(q).trim();
-  const list = (state._searchIndex || []).filter(x => !query || norm(`${x.title} ${x.sub}`).includes(query)).slice(0, 30);
+  const query = normalizeSearch(q);
+  const list = [];
+  for (const item of state._searchIndex || []) {
+    if (item.searchText.includes(query)) list.push(item);
+    if (list.length === 30) break;
+  }
   state._searchActive = 0;
   box.innerHTML = list.length ? list.map((x, i) => `
     <button class="search-item ${i === 0 ? 'active' : ''}" data-idx="${i}">
@@ -6933,19 +6951,22 @@ function renderSearchResults(q) {
       <span class="search-text"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></span>
     </button>`).join('') : '<div class="empty">Ничего не найдено</div>';
   state._searchList = list;
-  box.querySelectorAll('.search-item').forEach(btn => btn.addEventListener('click', () => pickSearchResult(Number(btn.dataset.idx))));
 }
 
 function pickSearchResult(idx) {
   const item = state._searchList?.[idx];
   if (!item) return;
-  closeSearch();
-  setTimeout(() => item.open(), 60);
+  closeSearch(false, item.open);
 }
 
 function initNavigation() {
   $('#searchBtn')?.addEventListener('click', openSearch);
   $('#searchDialog')?.addEventListener('click', e => { if (e.target.id === 'searchDialog') closeSearch(); });
+  $('#searchDialog')?.addEventListener('keydown', e => overlayKeydown(e, e.currentTarget, closeSearch));
+  $('#searchResults')?.addEventListener('click', e => {
+    const item = e.target.closest('.search-item');
+    if (item) pickSearchResult(Number(item.dataset.idx));
+  });
   $('#searchInput')?.addEventListener('input', e => renderSearchResults(e.target.value));
   $('#searchInput')?.addEventListener('keydown', e => {
     const items = $$('#searchResults .search-item');
@@ -6957,8 +6978,6 @@ function initNavigation() {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       pickSearchResult(state._searchActive || 0);
-    } else if (e.key === 'Escape') {
-      closeSearch();
     }
   });
   document.addEventListener('keydown', e => {
@@ -6986,6 +7005,12 @@ function initNavigation() {
   MoreSheet.init();
 
   window.addEventListener('popstate', () => {
+    if (searchAfterBack) {
+      const finish = searchAfterBack;
+      searchAfterBack = null;
+      setTimeout(finish, 0);
+      return;
+    }
     if (window._modalBackPending) {
       window._modalBackPending = false;
       restoreModalHistoryScrollMode();
@@ -7755,9 +7780,9 @@ const Watch = {
     const w = this.read();
     if (w[id]) delete w[id]; else w[id] = Date.now();
     try { safeStorage.set(this.key, JSON.stringify(w)); } catch {}
-    this.paint();
+    this.paint(w);
     if (w[id] && !Motion.reduced()) $$(`[data-watch="${id}"]`).forEach(b => { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 500); });
-    if (state.tab === 'my') loadMyPage();
+    if (state.tab === 'my') loadMyPage({ checklist: false });
     return Boolean(w[id]);
   },
   button(season, round) {
@@ -7765,17 +7790,22 @@ const Watch = {
     const on = this.has(id);
     return `<button type="button" class="btn secondary sm watch-btn${on ? ' on' : ''}" data-watch="${id}" aria-pressed="${on}">${on ? '✓ Смотрел(а)' : 'Я смотрел(а) эту гонку'}</button>`;
   },
-  paint() {
+  paint(watched = this.read()) {
     $$('[data-watch]').forEach(b => {
-      const on = this.has(b.dataset.watch);
+      const on = Boolean(watched[b.dataset.watch]);
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', String(on));
-      if (b.classList.contains('watch-btn')) b.textContent = on ? '✓ Смотрел(а)' : 'Я смотрел(а) эту гонку';
+      if (b.classList.contains('watch-btn')) {
+        const label = on ? '✓ Смотрел(а)' : 'Я смотрел(а) эту гонку';
+        if (b.textContent !== label) b.textContent = label;
+      }
     });
   }
 };
 
 async function loadMyPage(...args) { const self = loadMyPage; await LazyMod.load(); if (loadMyPage === self) throw new Error("loadMyPage: second script missing"); return loadMyPage(...args); }
+
+
 
 const TL_LABELS = { OVERTAKE: 'ОБГОН', PENALTY: 'ШТРАФ', INVESTIGATION: 'РАЗБОР', STEWARD: 'СТЮАРДЫ', DELETED: 'КРУГ УДАЛЁН' };
 const tlLabel = type => TL_LABELS[type] || String(type).replace('_', ' ');

@@ -1791,7 +1791,57 @@ function seasonMapLand() {
 }
 
 async function renderSeasonMap(races, season) {
-  SeasonMap.render(races, season, seasonMapLand);
+  if (SeasonMap.render(races, season, seasonMapLand)) bindSeasonMapPins($('#seasonMap'));
+}
+
+function findSeasonMapPin(svg, x, y) {
+  // Measure in CSS pixels so the touch radius stays the same at every zoom level.
+  const bounds = svg.getBoundingClientRect();
+  let best = null, distance = 22;
+  for (const pin of svg.querySelectorAll('.sm-pin[tabindex="0"]')) {
+    const center = pin.getScreenCTM();
+    if (!center || center.e < bounds.left || center.e > bounds.right || center.f < bounds.top || center.f > bounds.bottom) continue;
+    const delta = Math.hypot(x - center.e, y - center.f);
+    if (delta < distance) {
+      best = pin;
+      distance = delta;
+    }
+  }
+  return best;
+}
+
+function bindSeasonMapPins(box) {
+  if (box.dataset.bound) return;
+  box.dataset.bound = '1';
+  const hide = () => { box.querySelector('.sm-tip').hidden = true; };
+  const open = pin => showRace(pin.dataset.race, Number(pin.dataset.season));
+  const show = pin => {
+    const tip = box.querySelector('.sm-tip');
+    const r = pin.getBoundingClientRect(), b = box.getBoundingClientRect();
+    tip.innerHTML = `<b>${esc(pin.dataset.name)}</b><small>Этап ${esc(pin.dataset.race)} · ${esc(pin.dataset.place)}</small>`;
+    tip.hidden = false;
+    const width = tip.offsetWidth;
+    const left = r.left - b.left + (r.width - width) / 2;
+    tip.style.left = `${Math.max(0, Math.min(left, box.clientWidth - width))}px`;
+    tip.style.top = `${r.top - b.top}px`;
+  };
+  box.addEventListener('pointerover', e => { const pin = e.target.closest('.sm-pin'); if (pin) show(pin); });
+  box.addEventListener('pointerout', e => { if (e.target.closest('.sm-pin')) hide(); });
+  box.addEventListener('focusin', e => { const pin = e.target.closest('.sm-pin'); if (pin) show(pin); });
+  box.addEventListener('focusout', hide);
+  box.addEventListener('click', e => {
+    const svg = e.target.closest('svg');
+    if (!svg) return;
+    const pin = e.detail === 0 ? e.target.closest('.sm-pin[tabindex="0"]') : findSeasonMapPin(svg, e.clientX, e.clientY);
+    if (pin) open(pin);
+  });
+  box.addEventListener('keydown', e => {
+    const pin = e.target.closest('.sm-pin[tabindex="0"]');
+    if (pin && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      open(pin);
+    }
+  });
 }
 
 function driverRadarData(season, driverId) {
@@ -3288,27 +3338,38 @@ function seasonLogHtml(raceResults, qualResults) {
     }).join('')}</tbody></table></div>`;
 }
 
-async function loadMyPage() {
+async function loadMyPage({ checklist = true, stats = true } = {}) {
+  await Promise.all([checklist && loadMyChecklist(), stats && loadMyWatched()]);
+}
+
+async function loadMyChecklist() {
+  const generation = state.myChecklistGeneration = (state.myChecklistGeneration || 0) + 1;
   const sel = $('#mySeason');
   if (sel && !sel.options.length) {
     sel.innerHTML = Array.from({ length: CURRENT_SEASON - 2017 }, (_, i) => CURRENT_SEASON - i).map(y => `<option value="${y}">${y}</option>`).join('');
   }
   const season = Number(sel?.value) || CURRENT_SEASON;
-  const watched = Watch.read();
-  const keys = Object.keys(watched);
-  PageMotif.stat('my', keys.length, ruPlural(keys.length, ['гонка отмечена', 'гонки отмечены', 'гонок отмечено']));
-
   const chk = $('#myChecklist');
   try {
     const races = readRaces((await request(`${season}.json`)).data).filter(r => isRaceCompleted({ ...r, season }));
-    if (chk?.isConnected) {
+    if (generation === state.myChecklistGeneration && chk?.isConnected) {
+      const watched = Watch.read();
       chk.innerHTML = races.length ? races.map(r => {
         const id = `${season}-${r.round}`;
-        return `<button type="button" class="check-chip${Watch.has(id) ? ' on' : ''}" data-watch="${id}" aria-pressed="${Watch.has(id)}" title="${esc(ruGP(r.raceName))}"><small>R${esc(r.round)}</small><span>${esc(ruGP(r.raceName, true))}</span></button>`;
+        const on = Boolean(watched[id]);
+        return `<button type="button" class="check-chip${on ? ' on' : ''}" data-watch="${id}" aria-pressed="${on}" title="${esc(ruGP(r.raceName))}"><small>R${esc(r.round)}</small><span>${esc(ruGP(r.raceName, true))}</span></button>`;
       }).join('') : '<div class="empty">В этом сезоне ещё нет прошедших гонок.</div>';
     }
-  } catch { if (chk?.isConnected) chk.innerHTML = '<div class="empty">Не удалось загрузить календарь сезона.</div>'; }
+  } catch {
+    if (generation === state.myChecklistGeneration && chk?.isConnected) chk.innerHTML = '<div class="empty">Не удалось загрузить календарь сезона.</div>';
+  }
+}
 
+async function loadMyWatched() {
+  const generation = state.myWatchedGeneration = (state.myWatchedGeneration || 0) + 1;
+  const watched = Watch.read();
+  const keys = Object.keys(watched);
+  PageMotif.stat('my', keys.length, ruPlural(keys.length, ['гонка отмечена', 'гонки отмечены', 'гонок отмечено']));
   const statsBox = $('#myStats'), listBox = $('#myList');
   if (!keys.length) {
     statsBox.innerHTML = '';
@@ -3317,12 +3378,13 @@ async function loadMyPage() {
   }
   statsBox.innerHTML = '<div class="loading" style="grid-column:1/-1">Считаем вашу статистику…</div>';
   const details = (await mapLimit(keys, 3, async k => {
+    if (generation !== state.myWatchedGeneration) return null;
     const [y, r] = k.split('-').map(Number);
-    const res = await request(`${y}/${r}/results.json`);
-    const race = readRaces(res.data)[0];
+    const res = await request(`${y}/${r}/results.json`).catch(() => null);
+    const race = readRaces(res?.data)[0];
     return race ? { key: k, season: y, round: r, race, winner: race.Results?.[0], at: watched[k] } : null;
   })).filter(Boolean);
-  if (!statsBox.isConnected) return;
+  if (generation !== state.myWatchedGeneration || !statsBox.isConnected) return;
 
   const tally = (list, f) => Object.entries(list.reduce((a, x) => { const n = f(x); if (n) a[n] = (a[n] || 0) + 1; return a; }, {})).sort((a, b) => b[1] - a[1]);
   const circuit = tally(details, d => d.race.Circuit?.circuitName)[0];
