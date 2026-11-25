@@ -2621,11 +2621,15 @@ function bindCalendarFilterBar(races = []) {
 
 function renderCalendar(races) {
   const deferFn = typeof requestIdleCallback === 'function' ? cb => requestIdleCallback(cb, { timeout: 600 }) : cb => setTimeout(cb, 32);
+  const currentCalSeason = Number(state.seasons?.calendar) || (races[0] ? Number(races[0].season) : CURRENT_SEASON);
+  const mapSeason = Number(races[0]?.season) || currentCalSeason;
   deferFn(() => {
-    SeasonMap.render(races, Number(races[0]?.season) || Number(state.seasons?.calendar) || CURRENT_SEASON);
+    renderSeasonMap(races, mapSeason).catch(() => {
+      // The calendar cards still work when the site's secondary script is unavailable.
+      if (!$('#seasonMap svg')) $('#seasonMapCard').hidden = true;
+    });
   });
   const now = Date.now();
-  const currentCalSeason = Number(state.seasons?.calendar) || (races[0] ? Number(races[0].season) : CURRENT_SEASON);
   const nextIdx = races.findIndex(r => scheduleMoment(r) > now);
   const doneCount = races.filter(r => {
     const rSeason = Number(r.season || currentCalSeason);
@@ -4060,16 +4064,78 @@ document.addEventListener('change', e => {
   Accent.apply();
 });
 
-const WORLD_LAND = {"eurasia":[[-9.5,37],[-9,43.5],[-1.8,43.4],[-1.2,46],[-4.5,48.4],[-1.5,48.7],[1.5,50.5],[4,51.5],[8,53.7],[8.5,57],[10.5,57.7],[10,54.5],[14,54],[20,54.5],[22,57],[24,59.4],[30,60],[23,60],[21.5,63],[25,65.5],[22,65.8],[17.5,62],[19,59.5],[16,56.5],[13,55.5],[11,59],[6,58.5],[5,61.5],[14,67.5],[20,70],[28,71],[33,69.3],[41,67],[44,68.5],[60,69],[68,72.5],[80,73.5],[95,76],[106,77.5],[113,74],[130,71],[140,72.5],[160,69.5],[170,70],[180,68.5],[180,65],[170,60],[163,59.5],[156,51],[156.5,57],[142,59],[137,54],[141,52],[140,47.5],[135,43],[130,42.5],[129.5,35],[126,34.5],[126.5,37.5],[124.5,40],[121.5,39],[119.5,37],[122.5,37],[120.5,32],[122,30],[120,26],[116,22.5],[110,21],[108,16],[109,12],[105,8.5],[103,10.5],[100.5,13],[99.5,8],[103.5,1.5],[100.5,3],[98,8],[98.5,16],[94,16],[92,21],[87,21.5],[80,15.5],[77.5,8],[73,17],[72.5,21],[68.5,23.5],[66.5,25],[57,25.5],[56.5,27],[51,28],[48.5,30],[50,26.5],[52,24],[56,26],[59,23],[55,17],[52,16],[43,13],[39,21],[35,28],[34.5,31],[36,36],[32,36.5],[27,37],[26,40],[29,41],[36,41.5],[41,41],[38,45],[34,45],[33.5,46],[30,45.5],[28.5,43],[28,41],[26,40.5],[24,40],[23,37],[21,38],[19.5,41.5],[16,43.5],[13.5,45.5],[12.5,44],[16,41.5],[18.5,40],[16,38],[15.5,40],[12,42],[10,44],[7,43.5],[3,43],[3,41.5],[0.5,40],[-0.5,38.5],[-2,36.8],[-5.5,36]],"namerica":[[-168,66],[-156,71.5],[-140,69.5],[-125,70],[-110,68],[-95,72],[-85,70],[-82,63],[-93,59],[-92,57],[-80,52],[-79,55],[-77,62],[-70,61],[-64,60],[-61,56],[-56,52],[-60,47],[-66,44],[-70,42],[-74,40],[-76,35],[-81,31],[-80,25.5],[-82,27],[-83,29.5],[-89,30],[-93,29.5],[-97,27],[-97.5,22],[-95,18.5],[-91,18.5],[-90,21],[-87,21],[-88,16],[-83.5,15],[-83,10],[-79.5,9.5],[-77.5,8],[-80,7.5],[-83,8.5],[-86,11],[-87.5,13],[-91.5,14],[-96,15.8],[-101,17.5],[-105.5,20],[-106,23],[-110,27],[-113,31],[-115,30],[-117,32.5],[-121,35],[-123.5,38.5],[-124.5,42],[-124,46.5],[-123,49],[-128,51],[-130,54.5],[-134,58],[-140,60],[-146,60.5],[-152,59],[-158,57],[-162,55.5],[-165,60],[-166,63]],"greenland":[[-73,78],[-60,82],[-30,83],[-20,80],[-20,72],[-23,69],[-40,65],[-44,60],[-50,62],[-54,67],[-58,75]],"samerica":[[-77.5,8],[-72,12],[-64,10.5],[-60,8],[-52,5],[-50,0],[-45,-1.5],[-35,-5],[-35,-9],[-39,-14],[-39,-18],[-41,-22],[-48,-26],[-48.5,-28.5],[-53,-34],[-57,-35],[-58,-38.5],[-62,-39],[-65,-41],[-65,-45],[-67.5,-46],[-66,-48],[-69,-51],[-68.5,-55],[-72,-53.5],[-75,-50],[-73.5,-42],[-73.5,-37],[-71.5,-30],[-70.5,-20],[-70,-18],[-76,-14],[-81,-6],[-80,-2],[-80,1],[-77.5,4]],"africa":[[-17,21],[-16,28],[-10,30],[-6,35.8],[10,37],[11,33],[20,31.5],[25,32],[32,31],[34.5,28],[38,21],[43,12.5],[51,12],[51,10.5],[41,-1],[39.5,-5],[40.5,-11],[35,-20],[35.5,-24],[32.5,-28.5],[28,-33],[20,-34.8],[18,-32],[14.5,-22.5],[12,-17],[13.5,-12],[12,-5],[9,-1],[9.5,4],[4,6.2],[-2,5],[-8,4.5],[-13,8],[-17,14.5]],"australia":[[114,-22],[122,-18],[130,-12],[136,-12],[136,-15],[141,-17],[142.5,-10.5],[146,-19],[153,-26],[153,-30],[150,-37.5],[146,-39],[140,-38],[135,-34.5],[131,-31.5],[124,-33.5],[115,-34.5],[114,-28]],"uk":[[-5.5,50],[1.5,51],[1.8,53],[-0.5,54.5],[-2,57.5],[-3,58.5],[-6,58],[-5,55],[-3,54],[-4.5,52]],"ireland":[[-10,52],[-6,52],[-6,55],[-8,55],[-10,54]],"japan":[[130,31],[132,34],[135,34.5],[140,35],[141,38.5],[141.5,41.5],[140.5,41],[139.8,38],[136.5,37],[133,35.5],[131,34.5]],"sumatra":[[95,5.5],[98,4],[104,-2],[106,-6],[101,-3.5]]};
+
+async function renderSeasonMap(...args) { const self = renderSeasonMap; await LazyMod.load(); if (renderSeasonMap === self) throw new Error("renderSeasonMap: second script missing"); return renderSeasonMap(...args); }
 const SeasonMap = {
-  W: 1000, H: 500, LAT_TOP: 72, LAT_BOTTOM: -52,
-  _rafId: null,
-  xy(lat, lon) { return [(Number(lon) + 180) / 360 * this.W, (this.LAT_TOP - Number(lat)) / (this.LAT_TOP - this.LAT_BOTTOM) * this.H]; },
+  LAT_TOP: 72, _rafId: null, _vbRaf: null, _currentRegion: 'world',
+  REGIONS: {
+    world: [0, 0, 1000, 500],
+    europe: [432, 57, 180, 90],
+    americas: [110, 50, 340, 350],
+    asia: [570, 80, 380, 380]
+  },
+  xy(lat, lon) { return [(+lon + 180) * (25 / 9), (72 - +lat) * (125 / 31)]; },
   stopAnimation() {
-    if (this._rafId) {
-      cancelAnimationFrame(this._rafId);
-      this._rafId = null;
+    this._rafId = cancelAnimationFrame(this._rafId);
+    this._vbRaf = cancelAnimationFrame(this._vbRaf);
+  },
+  setRegion(id, instant = false) {
+    this._currentRegion = this.REGIONS[id] ? id : 'world';
+    const target = this.REGIONS[this._currentRegion];
+    $$('#seasonMapCard .sm-reg-btn').forEach(b => {
+      const act = b.dataset.region === this._currentRegion;
+      b.classList.toggle('active', act);
+      b.setAttribute('aria-pressed', act);
+    });
+    const box = $('#seasonMap'), svg = box?.querySelector('svg');
+    if (!svg) return;
+    box.dataset.region = this._currentRegion;
+    box.querySelector('.sm-tip').hidden = true;
+    const [left, top, width, height] = target;
+    svg.querySelectorAll('.sm-pin').forEach(pin => {
+      const { e: x, f: y } = pin.transform.baseVal.getItem(0).matrix;
+      const visible = x >= left && x <= left + width && y >= top && y <= top + height;
+      pin.setAttribute('tabindex', visible ? '0' : '-1');
+      if (visible) pin.removeAttribute('aria-hidden');
+      else pin.setAttribute('aria-hidden', 'true');
+    });
+    cancelAnimationFrame(this._vbRaf);
+    if (instant || Motion.reduced()) return void svg.setAttribute('viewBox', target.join(' '));
+    const raw = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+    const from = raw.length === 4 && raw.every(Number.isFinite) ? raw : target;
+    const start = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - start) / 280);
+      const ease = 1 - (1 - t) ** 3;
+      svg.setAttribute('viewBox', t < 1 ? from.map((v, i) => (v + (target[i] - v) * ease).toFixed(1)).join(' ') : target.join(' '));
+      this._vbRaf = t < 1 ? requestAnimationFrame(step) : null;
+    };
+    this._vbRaf = requestAnimationFrame(step);
+  },
+  bindControls() {
+    const card = $('#seasonMapCard');
+    if (!card || card.dataset.ctrlBound) return;
+    card.dataset.ctrlBound = '1';
+    card.addEventListener('click', e => {
+      const b = e.target.closest('.sm-reg-btn');
+      if (b) this.setRegion(b.dataset.region);
+    });
+  },
+  pinAt(svg, x, y) {
+    // Measure in CSS pixels so the touch radius stays the same at every zoom level.
+    // Choose by distance to the marker, rather than by SVG paint order.
+    const bounds = svg.getBoundingClientRect();
+    let best = null, distance = 22;
+    for (const pin of svg.querySelectorAll('.sm-pin[tabindex="0"]')) {
+      const center = pin.getScreenCTM();
+      if (!center || center.e < bounds.left || center.e > bounds.right || center.f < bounds.top || center.f > bounds.bottom) continue;
+      const delta = Math.hypot(x - center.e, y - center.f);
+      if (delta < distance) {
+        best = pin;
+        distance = delta;
+      }
     }
+    return best;
   },
   animateFlightpath(box) {
     this.stopAnimation();
@@ -4080,38 +4146,30 @@ const SeasonMap = {
       arcs.forEach(a => { a.style.strokeDashoffset = '0'; });
       return;
     }
-    const start = performance.now();
-    const duration = 1100;
+    const start = performance.now(), duration = 1100;
     const nextArc = box.querySelector('.sm-route.sm-arc.next');
-    const step = (now) => {
+    const step = now => {
       if (!box.isConnected) { this._rafId = null; return; }
-      const elapsed = now - start;
-      const t = Math.min(1, elapsed / duration);
-      const ease = 1 - Math.pow(1 - t, 3);
+      const t = Math.min(1, (now - start) / duration);
+      const ease = 1 - (1 - t) ** 3;
       arcs.forEach(a => {
-        if (a.classList.contains('done')) {
-          a.style.strokeDashoffset = String(((1 - ease) * 100).toFixed(2));
-        }
+        if (a.classList.contains('done')) a.style.strokeDashoffset = ((1 - ease) * 100).toFixed(2);
       });
-      if (nextArc) {
-        const pulseOffset = ((now / 18) % 24).toFixed(2);
-        nextArc.style.strokeDashoffset = String(-pulseOffset);
-      }
+      if (nextArc) nextArc.style.strokeDashoffset = -((now / 18) % 24).toFixed(2);
       if (t < 1) {
         this._rafId = requestAnimationFrame(step);
       } else {
-        arcs.forEach(a => {
-          if (a.classList.contains('done')) a.style.strokeDashoffset = '0';
-        });
+        arcs.forEach(a => { if (a.classList.contains('done')) a.style.strokeDashoffset = '0'; });
         this._rafId = null;
       }
     };
     this._rafId = requestAnimationFrame(step);
   },
-  render(races, season) {
+  render(races, season, getLand) {
     const card = $('#seasonMapCard'), box = $('#seasonMap');
     if (!card || !box) return;
-    const pts = (races || []).map(r => ({ r, lat: r.Circuit?.Location?.lat, lon: r.Circuit?.Location?.long })).filter(x => x.lat !== undefined && x.lon !== undefined && Number.isFinite(Number(x.lat)) && Number.isFinite(Number(x.lon)));
+    this.bindControls();
+    const pts = (races || []).map(r => ({ r, lat: r.Circuit?.Location?.lat, lon: r.Circuit?.Location?.long })).filter(x => Number.isFinite(+x.lat) && Number.isFinite(+x.lon));
     if (!pts.length) { card.hidden = true; return; }
     card.hidden = false;
     const now = Date.now();
@@ -4119,34 +4177,26 @@ const SeasonMap = {
     const key = `${season}:${pts.length}:${nextIdx}`;
     if (box.dataset.key === key && box.querySelector('.sm-route.sm-arc')) return;
     box.dataset.key = key;
-    const { W, H } = this;
     const grid = [];
-    for (let lon = -150; lon <= 150; lon += 30) { const [x] = this.xy(0, lon); grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="${H}"/><text x="${x + 3}" y="${H - 5}">${lon}°</text>`); }
-    for (let lat = -40; lat <= 60; lat += 20) { const [, y] = this.xy(lat, 0); grid.push(`<line x1="0" y1="${y}" x2="${W}" y2="${y}"/><text x="4" y="${y - 3}">${lat}°</text>`); }
-    const land = Object.values(WORLD_LAND).map(poly => `<polygon class="sm-land" points="${poly.map(([lon, lat]) => this.xy(Math.min(this.LAT_TOP + 8, lat), lon).map(v => v.toFixed(1)).join(',')).join(' ')}"/>`).join('');
+    for (let lon = -150; lon <= 150; lon += 30) { const [x] = this.xy(0, lon); grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="500"/><text x="${x + 3}" y="495">${lon}°</text>`); }
+    for (let lat = -40; lat <= 60; lat += 20) { const [, y] = this.xy(lat, 0); grid.push(`<line x1="0" y1="${y}" x2="1000" y2="${y}"/><text x="4" y="${y - 3}">${lat}°</text>`); }
+    const land = Object.values(getLand()).map(poly => `<polygon class="sm-land" points="${poly.map(([lon, lat]) => this.xy(Math.min(80, lat), lon).map(v => v.toFixed(1)).join(',')).join(' ')}"/>`).join('');
     const xy = pts.map(p => this.xy(p.lat, p.lon));
     const activeLegIdx = nextIdx > 0 ? nextIdx : (nextIdx === 0 && pts.length > 1 ? 1 : -1);
     const routeArcs = [];
     for (let i = 1; i < xy.length; i++) {
-      const [x1, y1] = xy[i - 1];
-      const [x2, y2] = xy[i];
-      const dx = x2 - x1;
-      const dy = y2 - y1;
-      const dist = Math.hypot(dx, dy);
-      const mx = (x1 + x2) / 2;
-      const my = (y1 + y2) / 2;
-      const lift = Math.min(68, Math.max(14, dist * 0.18));
-      const cx = mx;
-      const cy = Math.max(10, my - lift);
+      const [x1, y1] = xy[i - 1], [x2, y2] = xy[i];
+      const dist = Math.hypot(x2 - x1, y2 - y1);
+      const cx = (x1 + x2) / 2, cy = Math.max(10, (y1 + y2) / 2 - Math.min(68, Math.max(14, dist * 0.18)));
       let legState = 'done';
       if (activeLegIdx !== -1) {
         if (i === activeLegIdx) legState = 'next';
         else if (i > activeLegIdx || nextIdx === 0) legState = 'todo';
       }
       const dashAttrs = legState === 'done'
-        ? 'pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"'
+        ? 'pathLength="100" stroke-dasharray="100"'
         : legState === 'next'
-          ? 'pathLength="100" stroke-dasharray="8 4" stroke-dashoffset="0"'
+          ? 'pathLength="100" stroke-dasharray="8 4"'
           : 'stroke-dasharray="5 5"';
       routeArcs.push(
         `<path class="sm-route sm-arc ${legState}" data-leg="${i}" data-from="${esc(pts[i - 1].r.round)}" data-to="${esc(pts[i].r.round)}" data-state="${legState}" d="M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}" ${dashAttrs}/>`
@@ -4156,29 +4206,45 @@ const SeasonMap = {
     const pins = pts.map((p, i) => {
       const [x, y] = xy[i];
       const cls = i === nextIdx ? 'next' : scheduleMoment(p.r) <= now ? 'done' : 'todo';
-      return `<g class="sm-pin ${cls}" style="--i:${i}" tabindex="0" role="group" data-race="${esc(p.r.round)}" data-season="${esc(season)}" data-name="${esc(ruGP(p.r.raceName))}" data-place="${esc((p.r.Circuit?.Location?.locality || '') + ', ' + ruCountry(p.r.Circuit?.Location?.country || ''))}" aria-label="${esc(p.r.raceName)}, этап ${esc(p.r.round)}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="pin-in" style="--i:${i}">
-        ${cls === 'next' ? '<circle class="ring" r="11"/>' : ''}<circle class="dot" r="6"/></g><circle class="pin-hit" r="64" fill="rgba(0,0,0,0.001)" stroke="none"/></g>`;
+      return `<g class="sm-pin ${cls}" style="--i:${i}" tabindex="0" role="button" data-race="${esc(p.r.round)}" data-season="${esc(season)}" data-name="${esc(ruGP(p.r.raceName))}" data-place="${esc((p.r.Circuit?.Location?.locality || '') + ', ' + ruCountry(p.r.Circuit?.Location?.country || ''))}" aria-label="${esc(ruGP(p.r.raceName))}, этап ${esc(p.r.round)}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="pin-in">
+        ${cls === 'next' ? '<circle class="ring" r="8.5"/>' : ''}<circle class="dot" r="4.5"/></g></g>`;
     }).join('');
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Карта этапов сезона ${esc(season)}"><g class="sm-grid">${grid.join('')}</g><g class="sm-lands">${land}</g>${route}${pins}</svg>
-      <div class="sm-legend"><span><i style="background:var(--green,#30d158)"></i>пройденный маршрут</span><span><i style="background:var(--red2)"></i>текущий перелёт паддока</span><span><i style="border:1.5px dashed var(--muted)"></i>предстоящая логистика</span></div>`;
+    const targetVb = this.REGIONS[this._currentRegion] || this.REGIONS.world;
+    box.dataset.region = this._currentRegion;
+    box.innerHTML = `<svg viewBox="${targetVb.join(' ')}" role="group" aria-label="Карта этапов сезона ${esc(season)}"><g class="sm-grid">${grid.join('')}</g><g class="sm-lands">${land}</g>${route}${pins}</svg>
+      <div class="sm-legend"><span><i style="background:var(--green,#30d158)"></i>пройденный маршрут</span><span><i style="background:var(--red2)"></i>текущий перелёт паддока</span><span><i style="border:1.5px dashed var(--muted)"></i>предстоящая логистика</span></div><div class="sm-tip" hidden></div>`;
     $('#seasonMapCaption').textContent = `${pts.length} ${ruPlural(pts.length, ['этап', 'этапа', 'этапов'])}`;
     box.classList.remove('draw');
     if (!Motion.reduced()) { void box.offsetWidth; box.classList.add('draw'); }
     this.animateFlightpath(box);
+    this.setRegion(this._currentRegion, true);
     if (!box.dataset.bound) {
       box.dataset.bound = '1';
-      const tip = document.createElement('div'); tip.className = 'sm-tip'; tip.hidden = true; box.appendChild(tip);
+      const hide = () => { box.querySelector('.sm-tip').hidden = true; };
+      const open = pin => showRace(pin.dataset.race, Number(pin.dataset.season));
       const show = pin => {
+        const tip = box.querySelector('.sm-tip');
         const r = pin.getBoundingClientRect(), b = box.getBoundingClientRect();
         tip.innerHTML = `<b>${esc(pin.dataset.name)}</b><small>Этап ${esc(pin.dataset.race)} · ${esc(pin.dataset.place)}</small>`;
         tip.style.left = `${r.left - b.left + r.width / 2}px`; tip.style.top = `${r.top - b.top}px`; tip.hidden = false;
       };
       box.addEventListener('pointerover', e => { const pin = e.target.closest('.sm-pin'); if (pin) show(pin); });
-      box.addEventListener('pointerout', e => { if (e.target.closest('.sm-pin')) tip.hidden = true; });
+      box.addEventListener('pointerout', e => { if (e.target.closest('.sm-pin')) hide(); });
       box.addEventListener('focusin', e => { const pin = e.target.closest('.sm-pin'); if (pin) show(pin); });
-      box.addEventListener('focusout', () => { tip.hidden = true; });
-      box.addEventListener('click', e => { const pin = e.target.closest('.sm-pin'); if (pin) showRace(pin.dataset.race, Number(pin.dataset.season)); });
-      box.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest?.('.sm-pin')) { e.preventDefault(); const pin = e.target.closest('.sm-pin'); showRace(pin.dataset.race, Number(pin.dataset.season)); } });
+      box.addEventListener('focusout', hide);
+      box.addEventListener('click', e => {
+        const svg = e.target.closest('svg');
+        if (!svg) return;
+        const pin = e.detail === 0 ? e.target.closest('.sm-pin[tabindex="0"]') : this.pinAt(svg, e.clientX, e.clientY);
+        if (pin) open(pin);
+      });
+      box.addEventListener('keydown', e => {
+        const pin = e.target.closest('.sm-pin[tabindex="0"]');
+        if (pin && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          open(pin);
+        }
+      });
     }
   }
 };
@@ -5502,6 +5568,7 @@ async function switchTab(tab, { fromPopState = false } = {}) {
   setTimeout(() => ProvBar.render(tab), 0);
   state._tabGeneration = (state._tabGeneration || 0) + 1;
   const gen = state._tabGeneration;
+  _currentVt?.skipTransition();
 
   if (_currentTabAbortController) {
     try { _currentTabAbortController.abort(); } catch {}
@@ -5511,7 +5578,13 @@ async function switchTab(tab, { fromPopState = false } = {}) {
 
   // the old screen fades out while the new one comes in (View Transitions); without the API the panels just swap.
   // The tab itself (state, menu, address) changes at once; the transition only animates the panels.
-  const swapPanels = () => $$('.panel').forEach(p => p.classList.toggle('active', p.id === state.tab));
+  let swapped = false;
+  const swapPanels = () => {
+    if (swapped || gen !== state._tabGeneration) return;
+    swapped = true;
+    $$('.panel').forEach(p => p.classList.toggle('active', p.id === tab));
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
   const root = document.documentElement;
   if (!fromPopState && prevTab && prevTab !== tab && document.startViewTransition && document.body.dataset.booted && !Motion.reduced() && (!navigator.webdriver || window.__f1ForceVT)) {
     try {
@@ -5520,7 +5593,13 @@ async function switchTab(tab, { fromPopState = false } = {}) {
       vt.ready?.catch(() => {});
       vt.updateCallbackDone?.catch(() => {});
       _currentVt = vt;
-      vt.finished.catch(() => {}).finally(() => { if (_currentVt === vt) { _currentVt = null; root.classList.toggle('vt-run', false); } swapPanels(); });
+      vt.finished.catch(() => {}).finally(() => {
+        if (_currentVt === vt) {
+          _currentVt = null;
+          root.classList.remove('vt-run');
+        }
+        swapPanels();
+      });
     } catch { _currentVt = null; root.classList.toggle('vt-run', false); swapPanels(); }
   } else swapPanels();
 
@@ -5563,7 +5642,6 @@ async function switchTab(tab, { fromPopState = false } = {}) {
     history: 'Все чемпионы мира Формулы‑1 с 1950 года и итоговые таблицы любого сезона.'
   };
   document.querySelector('meta[name="description"]')?.setAttribute('content', tabDesc[tab] || tabDesc.home);
-  window.scrollTo({ top: 0, behavior: 'instant' });
   NavMotion.update(true);
 
   if (tab === 'home') await loadHome({ signal: tabSignal });
