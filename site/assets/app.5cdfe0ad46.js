@@ -2323,6 +2323,10 @@ function renderWeekend(race, races) {
   const fold = $('#weekendFold'), line = $('#nextSession'), box = $('#raceWeekendContainer');
   clearTimeout(renderWeekend.timer);
   fold.hidden = !race;
+  clearInterval(window.countdownTimer);
+  window.countdownTimer = null;
+  const timer = $('#countdownBox'), label = $('#countdownLabel');
+  timer.hidden = label.hidden = true;
   if (!race) { line.textContent = ''; box.replaceChildren(); return; }
   const now = Date.now();
   const sessions = weekendSessions([race]);
@@ -2352,6 +2356,13 @@ function renderWeekend(race, races) {
   if (uncertain) line.textContent = `Ближайшая сессия · ${uncertain.label} · ${uncertain.day}, время уточняется`;
   else if (next) line.textContent = `Ближайшая сессия · ${next.label} · ${dateFmt.format(next.start)}, ${timeFmt.format(next.start)} по вашему времени`;
   else line.textContent = 'Время ближайшей сессии пока неизвестно';
+  if (next && !uncertain) {
+    label.textContent = `До старта · ${next.label}`;
+    timer.hidden = label.hidden = false;
+    startCountdown(next.start);
+  }
+  $('#weekendCalendarLink').dataset.round = race.round || '';
+  $('#weekendCalendarLink').dataset.season = race.season || state.season;
   const badges = { live: 'По расписанию', completed: 'Прошла', scheduled: 'Ожидается' };
   box.innerHTML = '<div class="weekend-grid">' + [...days].map(([day, items]) => `
     <div class="weekend-day-card"><div class="weekend-day-title">${esc(day)}</div>
@@ -2375,12 +2386,6 @@ function nextRace(races) {
 function renderNext(races) {
   const n = nextRace(races);
   renderWeekend(n, races);
-  if (window.countdownTimer) {
-    clearInterval(window.countdownTimer);
-    window.countdownTimer = null;
-  }
-
-  $('.countdown-label').hidden = !n;
   if (!n) {
     $('#heroLapHud').replaceChildren();
     $('#nextTrack').removeAttribute('data-drawn');
@@ -2400,7 +2405,6 @@ function renderNext(races) {
     return;
   }
 
-  const exact = raceTime(n);
   const trackBg = $('#nextTrack');
   if (trackBg) {
     const cid = String(n.Circuit?.circuitId || '').replace(/[^a-zA-Z0-9_-]/g, '');
@@ -2421,19 +2425,11 @@ function renderNext(races) {
   }
   const nextNameVal = ruGP(n.raceName);
   if ($('#nextName').textContent !== nextNameVal) $('#nextName').textContent = nextNameVal;
-  const nextMetaVal = `${n.Circuit?.circuitName || 'Автодром F1'} · ${fmtSchedule(n)}`;
+  const nextMetaVal = `${n.Circuit?.circuitName || 'Автодром F1'} · Гонка: ${fmtSchedule(n)}`;
   if ($('#nextMeta').textContent !== nextMetaVal) $('#nextMeta').textContent = nextMetaVal;
 
   WeekendWeather.load(n);
 
-  if (exact) {
-    startCountdown(exact);
-  } else {
-    $('#cdDays').textContent = '--';
-    $('#cdHours').textContent = '--';
-    $('#cdMins').textContent = '--';
-    $('#cdSecs').textContent = '--';
-  }
 }
 
 function startCountdown(t) {
@@ -2534,7 +2530,7 @@ function applyCalendarFilter(filterKey = _activeCalendarFilter) {
   const listEl = document.getElementById('calendarList');
   if (!listEl) return;
   const cards = listEl.querySelectorAll('.race-card');
-  let visibleCount = 0;
+  let visibleCount = 0, foldedCount = 0;
   cards.forEach(card => {
     let match = true;
     if (_activeCalendarFilter === 'SPRINT') match = card.dataset.sprint === '1';
@@ -2544,16 +2540,21 @@ function applyCalendarFilter(filterKey = _activeCalendarFilter) {
     else if (_activeCalendarFilter === 'ASIA_ME') match = card.dataset.region === 'ASIA_ME';
     card.hidden = !match;
     card.style.display = match ? '' : 'none';
-    if (match) visibleCount++;
+    if (match) {
+      visibleCount++;
+      if (listEl.classList.contains('hide-past') && card.classList.contains('done')) foldedCount++;
+    }
   });
   let emptyFilterNote = listEl.querySelector('.cal-filter-empty');
-  if (cards.length > 0 && visibleCount === 0) {
+  if (cards.length > 0 && visibleCount === foldedCount) {
     if (!emptyFilterNote) {
       emptyFilterNote = document.createElement('div');
       emptyFilterNote.className = 'empty cal-filter-empty';
-      emptyFilterNote.textContent = 'Нет этапов, соответствующих выбранному тактическому фильтру.';
       listEl.appendChild(emptyFilterNote);
     }
+    emptyFilterNote.textContent = foldedCount
+      ? 'Подходящие этапы находятся в разделе «Показать прошедшие».'
+      : 'Нет этапов, соответствующих фильтру.';
     emptyFilterNote.hidden = false;
   } else if (emptyFilterNote) {
     emptyFilterNote.hidden = true;
@@ -2585,10 +2586,13 @@ function renderCalendar(races) {
   const deferFn = typeof requestIdleCallback === 'function' ? cb => requestIdleCallback(cb, { timeout: 600 }) : cb => setTimeout(cb, 32);
   const currentCalSeason = Number(state.seasons?.calendar) || (races[0] ? Number(races[0].season) : CURRENT_SEASON);
   const mapSeason = Number(races[0]?.season) || currentCalSeason;
+  const renderId = state.calendarRenderId = (state.calendarRenderId || 0) + 1;
+  const isCurrent = () => state.calendarRenderId === renderId;
   deferFn(() => {
-    renderSeasonMap(races, mapSeason).catch(() => {
+    if (!isCurrent()) return;
+    renderSeasonMap(races, mapSeason, isCurrent).catch(() => {
       // The calendar cards still work when the site's secondary script is unavailable.
-      if (!$('#seasonMap svg')) $('#seasonMapCard').hidden = true;
+      if (isCurrent() && !$('#seasonMap svg')) $('#seasonMapCard').hidden = true;
     });
   });
   const now = Date.now();
@@ -2640,10 +2644,8 @@ function renderCalendar(races) {
     </article>`;
   }).join('') : '<div class="empty"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:6px 0 0">Календарь для выбранного сезона временно недоступен.</p></div>';
 
-  if (_activeCalendarFilter !== 'ALL') {
-    applyCalendarFilter(_activeCalendarFilter);
-  }
   CalendarPast.apply(races.length && nextIdx > 0 ? $$('#calendarList .race-card.done').length : 0);
+  applyCalendarFilter();
 }
 
 // Прошедшие этапы сезона свёрнуты под одну кнопку: открыв календарь, человек сразу видит ближайший этап.
@@ -2658,7 +2660,7 @@ const CalendarPast = {
     if (!btn) {
       list.insertAdjacentHTML('beforebegin', '<button type="button" class="btn secondary cal-past-toggle" id="calendarPastToggle" aria-controls="calendarList"></button>');
       btn = $('#calendarPastToggle');
-      btn.addEventListener('click', () => { this.open = !this.open; this.apply($$('#calendarList .race-card.done').length); });
+      btn.addEventListener('click', () => { this.open = !this.open; this.apply($$('#calendarList .race-card.done').length); applyCalendarFilter(); });
     }
     list.classList.toggle('hide-past', !this.open);
     btn.setAttribute('aria-expanded', String(this.open));
@@ -3464,7 +3466,24 @@ const HISTORICAL_STAGES = {
   }
 };
 
-async function showRace(...args) { const self = showRace; await LazyMod.load(); if (showRace === self) throw new Error("showRace: second script missing"); return showRace(...args); }
+async function showRace(round, season = state.season) {
+  const winSeq = WinSeq.next();
+  const targetSeason = Number(season) || state.season;
+  const races = state.pageData.calendar?.season === targetSeason ? state.pageData.calendar.b.races : state.calendar;
+  const race = races?.find(r => Number(r.season) === targetSeason && String(r.round) === String(round)) ||
+    readRaces(readSnapshot(`${targetSeason}.json`)?.data).find(r => String(r.round) === String(round));
+  Deep.next = { path: `race/${targetSeason}/${round}`, t: Date.now() };
+  openModal(`<h2>${esc(race ? ruGP(race.raceName) : `Этап ${round}`)}</h2><p class="subtle">Сезон ${targetSeason}${race ? ` · ${fmtSchedule(race)}` : ''}</p>`,
+    '<div class="loading" role="status">Загрузка данных этапа…</div>');
+  try {
+    await loadRaceDetails(round, targetSeason, winSeq, race);
+  } catch (err) {
+    if (WinSeq.n !== winSeq) return;
+    $('#modalBody').innerHTML = `<div class="error-box">Не удалось загрузить данные этапа. ${esc(err?.message || '')}</div>`;
+  }
+}
+
+async function loadRaceDetails(...args) { const self = loadRaceDetails; await LazyMod.load(); if (loadRaceDetails === self) throw new Error("loadRaceDetails: second script missing"); return loadRaceDetails(...args); }
 
 async function loadHome({ force = false, signal = null } = {}) {
   let cb = readCache(`bundle:${state.season}`, { allowStale: true })?.data;
@@ -4124,7 +4143,8 @@ const SeasonMap = {
     card.hidden = false;
     const now = Date.now();
     const nextIdx = pts.findIndex(x => scheduleMoment(x.r) > now);
-    const key = `${season}:${pts.length}:${nextIdx}`;
+    const key = JSON.stringify([season, nextIdx, pts.map(({ r, lat, lon }) =>
+      [r.round, r.raceName, r.date, r.time, r.Circuit?.Location?.locality, r.Circuit?.Location?.country, lat, lon])]);
     if (box.dataset.key === key && box.querySelector('.sm-route.sm-arc')) return;
     box.dataset.key = key;
     const grid = [];
@@ -5388,20 +5408,35 @@ function loadCalendar(opts) { return loadCalendarPage(opts); }
 
 async function loadStandingsPage(...args) { const self = loadStandingsPage; await LazyMod.load(); if (loadStandingsPage === self) throw new Error("loadStandingsPage: second script missing"); return loadStandingsPage(...args); }
 
-async function loadCalendarPage({ signal = null } = {}) {
+async function loadCalendarPage({ signal = null, force = false } = {}) {
   const season = Number($('#calendarSeason')?.value) || state.seasons?.calendar || CURRENT_SEASON;
   setPageSeason('calendar', season);
-  const snapData = readSnapshot(`${season}.json`)?.data || readSnapshot("2026.json")?.data || readSnapshot("2025.json")?.data || readSnapshot("2024.json")?.data;
-  const initialRaces = (snapData ? readRaces(snapData) : []) || (state.calendar && Number(state.calendar[0]?.season) === season ? state.calendar : []);
-  if (initialRaces.length) { renderCalendar(initialRaces); } else { $("#calendarList").innerHTML = Skeletons.cards(6); }
+  const loadId = state.calendarLoadId = (state.calendarLoadId || 0) + 1;
+  const active = () => !signal?.aborted && loadId === state.calendarLoadId && Number($('#calendarSeason').value) === season;
+  const path = `${season}.json`;
+  const previous = state.pageData.calendar;
+  const initialRaces = previous?.season === season ? previous.b.races :
+    readRaces(readCache(path, { allowStale: true })?.data || readSnapshot(path)?.data);
+  let signature;
+  if (initialRaces.length) {
+    renderCalendar(initialRaces);
+    signature = JSON.stringify(initialRaces);
+  } else {
+    state.calendarRenderId = (state.calendarRenderId || 0) + 1;
+    $('#seasonMapCard').hidden = true;
+    $('#seasonProgress').replaceChildren();
+    $('#calendarPastToggle')?.remove();
+    $('#calendarList').innerHTML = Skeletons.cards(6);
+  }
   try {
-    const b = await loadSeasonBundle(season, { signal });
-    if (signal?.aborted || Number($('#calendarSeason').value) !== season) return;
-    state.pageData.calendar = { season, b };
-    renderCalendar(b.races);
+    const { data } = await request(path, { signal, force });
+    if (!active()) return;
+    const races = readRaces(data);
+    state.pageData.calendar = { season, b: { races } };
+    if (JSON.stringify(races) !== signature) renderCalendar(races);
   } catch {
-    if (signal?.aborted) return;
-    $('#calendarList').innerHTML = '<div class="error-box"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:8px 0 0">Не удалось загрузить календарь этапов.</p><button class="btn secondary" style="margin-top:8px" onclick="loadCalendarPage()">Повторить попытку</button></div>';
+    if (!active() || initialRaces.length) return;
+    $('#calendarList').innerHTML = '<div class="error-box">Не удалось загрузить календарь этапов. <button class="btn secondary" onclick="loadCalendarPage()">Повторить попытку</button></div>';
   }
 }
 
@@ -5514,7 +5549,7 @@ async function switchTab(tab, { fromPopState = false } = {}) {
     if (heroH1) heroH1.hidden = tab !== 'home';
   }
   const tabDesc = {
-    home: 'Формула‑1: отрыв лидера, обратный отсчёт до гонки, прогноз погоды и расписание сессий.',
+    home: 'Формула‑1: отрыв лидера, обратный отсчёт до ближайшей сессии, прогноз погоды и расписание.',
     standings: 'Личный и командный зачёты Формулы‑1, гонка за очками и динамика мест по этапам.',
     calendar: 'Календарь сезона Формулы‑1 с картой этапов и временем сессий в вашем часовом поясе.',
     circuits: 'Каталог автодромов Формулы‑1: схемы, рекорды круга, история Гран-при и телеметрия.',
@@ -5557,10 +5592,7 @@ async function refreshAll() {
     if (state.tab === 'standings') {
       await loadStandingsPage({ force: true });
     } else if (state.tab === 'calendar') {
-      const s = Number($('#calendarSeason').value) || state.season;
-      const b = await loadSeasonBundle(s, { force: true });
-      state.calendar = b.races;
-      renderCalendar(b.races);
+      await loadCalendarPage({ force: true });
     } else if (state.tab === 'drivers') {
       const s = Number($('#driverSeason').value) || state.season;
       const b = await loadSeasonBundle(s, { force: true });
@@ -5775,7 +5807,22 @@ function initEvents() {
   } catch {}
 
   $('#standingsSeason')?.addEventListener('change', loadStandingsPage);
-  $('#calendarSeason')?.addEventListener('change', loadCalendarPage);
+  $('#calendarSeason')?.addEventListener('change', () => loadCalendarPage({ signal: _currentTabAbortController?.signal }));
+  $('#weekendCalendarLink').addEventListener('click', async e => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    const { season, round } = e.currentTarget.dataset;
+    if (season) $('#calendarSeason').value = season;
+    applyCalendarFilter('ALL');
+    await switchTab('calendar');
+    if (state.tab !== 'calendar' || $('#calendarSeason').value !== season) return;
+    await _currentVt?.updateCallbackDone.catch(() => {});
+    if (state.tab !== 'calendar') return;
+    const card = $$('#calendarList .race-card').find(el => el.dataset.race === round);
+    if (!card) return;
+    card.focus({ preventScroll: true });
+    card.scrollIntoView({ block: 'center' });
+  });
 
   $('#circuitSearch')?.addEventListener('input', renderCircuitCatalog);
   $('#circuitSeasonFilter')?.addEventListener('change', renderCircuitCatalog);
@@ -6530,33 +6577,7 @@ if (typeof window !== 'undefined') window.renderPositionsChart = renderPositions
 
 // «Сравнить с…» из личного дела: окно закрывается, «Сравнение» открывается с этим пилотом и напарником
 
-async function loadComparePage({ signal = null } = {}) {
-  const season = Number($('#compareSeason')?.value) || CURRENT_SEASON;
-  setPageSeason('compare', season);
-  const preset = state.comparePreset?.season === season ? state.comparePreset : null;
-  try {
-    const b = await loadSeasonBundle(season, { signal });
-    if (signal?.aborted || Number($('#compareSeason').value) !== season) return;
-    state.pageData.compare = { season, b };
-    const opts = b.drivers.map(d => `<option value="${esc(d.Driver.driverId)}">${esc(driverName(d.Driver))} · ${esc(d.Constructors?.[0]?.name || '—')}</option>`).join('');
-    const has = id => Boolean(id) && b.drivers.some(d => d.Driver.driverId === id);
-    if (preset) {
-      state.comparePreset = null;
-      // нет напарника — второй пилот первый по зачёту, кроме самого пилота
-      if (!has(preset.b) || preset.b === preset.a) preset.b = b.drivers.find(d => d.Driver.driverId !== preset.a)?.Driver.driverId || '';
-    }
-    ['compareA', 'compareB'].forEach((id, i) => {
-      const el = $('#' + id);
-      const prev = el.value;
-      el.innerHTML = opts;
-      const want = preset ? preset[i ? 'b' : 'a'] : prev;
-      el.value = has(want) ? want : (b.drivers[i]?.Driver.driverId || '');
-    });
-    await renderComparison();
-  } catch {
-    if (!signal?.aborted) $('#compareResult').innerHTML = '<div class="error-box">Не удалось загрузить пилотов сезона. Проверьте сеть.</div>';
-  }
-}
+async function loadComparePage(...args) { const self = loadComparePage; await LazyMod.load(); if (loadComparePage === self) throw new Error("loadComparePage: second script missing"); return loadComparePage(...args); }
 
 async function renderComparison(...args) { const self = renderComparison; await LazyMod.load(); if (renderComparison === self) throw new Error("renderComparison: second script missing"); return renderComparison(...args); }
 
@@ -7767,7 +7788,7 @@ function stewardEvents(messages, driversByNum = {}) {
   // pointing at a secondary tab or a card fetches the code of the windows ahead of the click (fast connections only)
   if (SITE?.lazy && !navigator.connection?.saveData) document.addEventListener('pointerover', e => { if (e.target.closest?.('[data-tab], .driver-card, .team-card, .race-card, .track-catalog-card')) LazyMod.load().catch(() => {}); }, { passive: true, once: true });
   await loadHome();
-  if (SITE) { ChartLib.load(); SnapshotStore.whenAll(); }
+  if (SITE) ChartLib.load();
   if (startDeep) Deep.open(startDeep);
   const runIdle = typeof requestIdleCallback !== 'undefined' ? cb => requestIdleCallback(cb, { timeout: 1500 }) : cb => setTimeout(cb, 120);
   runIdle(async () => {

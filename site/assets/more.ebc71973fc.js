@@ -470,8 +470,6 @@ function populateCircuitFilters() {
 
 async function showCircuit(id) {
   const winSeq = WinSeq.next();
-  if (!SnapshotStore.allDone) await SnapshotStore.whenAll();
-  if (WinSeq.n !== winSeq) return;
   const canonId = TRACK_ALIASES[id] || id;
   const entry = TRACK_REGISTRY[canonId] || {
     name: canonId, country: 'F1', locality: '', seasons: [], turns: 14, lengthKm: 5.0,
@@ -967,8 +965,6 @@ async function showDriver(id, season = state.season) {
 
 async function showTeam(id, season = state.season) {
   const winSeq = WinSeq.next();
-  if (!SnapshotStore.allDone) await SnapshotStore.whenAll();
-  if (WinSeq.n !== winSeq) return;
   const targetSeason = Number(season);
   Deep.next = { path: `team/${encodeURIComponent(id)}/${targetSeason}`, t: Date.now() };
   openModal('<h2>Загрузка команды…</h2>', '<div class="loading">Получение показателей команды…</div>', { dossier: true });
@@ -1172,12 +1168,10 @@ function renderRaceTimelineHtml(events = [], circuitId = '') {
   `;
 }
 
-async function showRace(round, season = state.season) {
-  const winSeq = WinSeq.next();
-  if (!SnapshotStore.allDone) await SnapshotStore.whenAll();
+async function loadRaceDetails(round, targetSeason, winSeq, initialRace) {
   if (WinSeq.n !== winSeq) return;
-  const targetSeason = Number(season) || state.season;
-  Deep.next = { path: `race/${targetSeason}/${round}`, t: Date.now() };
+  await SnapshotStore.ensure(`${targetSeason}.json`);
+  if (WinSeq.n !== winSeq) return;
   const memKey = `${targetSeason}::${round}`;
   const cachedRace = _raceDetailsMemCache.get(memKey);
   // сохранённые ответы из IndexedDB читаем все сразу, а не по очереди (на слабом телефоне каждое чтение заметно)
@@ -1187,7 +1181,7 @@ async function showRace(round, season = state.season) {
    `${targetSeason}/${round}/pitstops.json?limit=100`, `${targetSeason}/${round}/pitstops.json`].forEach(idbGet);
 
   try {
-    let race = null;
+    let race = initialRace || null;
     let rRes = null;
     let qRes = null;
     let pRes = null;
@@ -1196,9 +1190,6 @@ async function showRace(round, season = state.season) {
       ({ race, rRes, qRes, pRes } = cachedRace);
     }
 
-    if (!race && state.calendar && (Number(state.season) === targetSeason || Number(state.seasons?.calendar) === targetSeason)) {
-      race = state.calendar.find(x => String(x.round) === String(round));
-    }
     if (!race) {
       const cachedSeason = readCache(`${targetSeason}.json`, { allowStale: true });
       if (cachedSeason?.data) {
@@ -1306,11 +1297,9 @@ async function showRace(round, season = state.season) {
         if (!inTime) all.then(() => {
           if (WinSeq.n !== winSeq || !$('#modal')?.classList.contains('open') || (qRes === previousQual && pRes === previousPits)) return;
           _raceDetailsMemCache.set(memKey, { rRes, qRes, pRes, race });
-          showRace(round, season);
+          loadRaceDetails(round, targetSeason, winSeq, race);
         });
       } else {
-        // данных этапа нет ни в снимке, ни в кэше: окно открывается сразу с загрузкой, чтобы нажатие не казалось потерянным
-        openModal(`<h2>${esc(race ? ruGP(race.raceName) : `Этап ${round}`)}</h2><p class="subtle">Сезон ${targetSeason}</p>`, '<div class="loading">Загрузка результатов этапа…</div>');
         await Promise.allSettled(fetchJobs);
         if (WinSeq.n !== winSeq) return;   // пока ждали сеть, окно закрыли или открыли другое
       }
@@ -1789,8 +1778,8 @@ function seasonMapLand() {
   return {"eurasia":[[-9.5,37],[-9,43.5],[-1.8,43.4],[-1.2,46],[-4.5,48.4],[-1.5,48.7],[1.5,50.5],[4,51.5],[8,53.7],[8.5,57],[10.5,57.7],[10,54.5],[14,54],[20,54.5],[22,57],[24,59.4],[30,60],[23,60],[21.5,63],[25,65.5],[22,65.8],[17.5,62],[19,59.5],[16,56.5],[13,55.5],[11,59],[6,58.5],[5,61.5],[14,67.5],[20,70],[28,71],[33,69.3],[41,67],[44,68.5],[60,69],[68,72.5],[80,73.5],[95,76],[106,77.5],[113,74],[130,71],[140,72.5],[160,69.5],[170,70],[180,68.5],[180,65],[170,60],[163,59.5],[156,51],[156.5,57],[142,59],[137,54],[141,52],[140,47.5],[135,43],[130,42.5],[129.5,35],[126,34.5],[126.5,37.5],[124.5,40],[121.5,39],[119.5,37],[122.5,37],[120.5,32],[122,30],[120,26],[116,22.5],[110,21],[108,16],[109,12],[105,8.5],[103,10.5],[100.5,13],[99.5,8],[103.5,1.5],[100.5,3],[98,8],[98.5,16],[94,16],[92,21],[87,21.5],[80,15.5],[77.5,8],[73,17],[72.5,21],[68.5,23.5],[66.5,25],[57,25.5],[56.5,27],[51,28],[48.5,30],[50,26.5],[52,24],[56,26],[59,23],[55,17],[52,16],[43,13],[39,21],[35,28],[34.5,31],[36,36],[32,36.5],[27,37],[26,40],[29,41],[36,41.5],[41,41],[38,45],[34,45],[33.5,46],[30,45.5],[28.5,43],[28,41],[26,40.5],[24,40],[23,37],[21,38],[19.5,41.5],[16,43.5],[13.5,45.5],[12.5,44],[16,41.5],[18.5,40],[16,38],[15.5,40],[12,42],[10,44],[7,43.5],[3,43],[3,41.5],[0.5,40],[-0.5,38.5],[-2,36.8],[-5.5,36]],"namerica":[[-168,66],[-156,71.5],[-140,69.5],[-125,70],[-110,68],[-95,72],[-85,70],[-82,63],[-93,59],[-92,57],[-80,52],[-79,55],[-77,62],[-70,61],[-64,60],[-61,56],[-56,52],[-60,47],[-66,44],[-70,42],[-74,40],[-76,35],[-81,31],[-80,25.5],[-82,27],[-83,29.5],[-89,30],[-93,29.5],[-97,27],[-97.5,22],[-95,18.5],[-91,18.5],[-90,21],[-87,21],[-88,16],[-83.5,15],[-83,10],[-79.5,9.5],[-77.5,8],[-80,7.5],[-83,8.5],[-86,11],[-87.5,13],[-91.5,14],[-96,15.8],[-101,17.5],[-105.5,20],[-106,23],[-110,27],[-113,31],[-115,30],[-117,32.5],[-121,35],[-123.5,38.5],[-124.5,42],[-124,46.5],[-123,49],[-128,51],[-130,54.5],[-134,58],[-140,60],[-146,60.5],[-152,59],[-158,57],[-162,55.5],[-165,60],[-166,63]],"greenland":[[-73,78],[-60,82],[-30,83],[-20,80],[-20,72],[-23,69],[-40,65],[-44,60],[-50,62],[-54,67],[-58,75]],"samerica":[[-77.5,8],[-72,12],[-64,10.5],[-60,8],[-52,5],[-50,0],[-45,-1.5],[-35,-5],[-35,-9],[-39,-14],[-39,-18],[-41,-22],[-48,-26],[-48.5,-28.5],[-53,-34],[-57,-35],[-58,-38.5],[-62,-39],[-65,-41],[-65,-45],[-67.5,-46],[-66,-48],[-69,-51],[-68.5,-55],[-72,-53.5],[-75,-50],[-73.5,-42],[-73.5,-37],[-71.5,-30],[-70.5,-20],[-70,-18],[-76,-14],[-81,-6],[-80,-2],[-80,1],[-77.5,4]],"africa":[[-17,21],[-16,28],[-10,30],[-6,35.8],[10,37],[11,33],[20,31.5],[25,32],[32,31],[34.5,28],[38,21],[43,12.5],[51,12],[51,10.5],[41,-1],[39.5,-5],[40.5,-11],[35,-20],[35.5,-24],[32.5,-28.5],[28,-33],[20,-34.8],[18,-32],[14.5,-22.5],[12,-17],[13.5,-12],[12,-5],[9,-1],[9.5,4],[4,6.2],[-2,5],[-8,4.5],[-13,8],[-17,14.5]],"australia":[[114,-22],[122,-18],[130,-12],[136,-12],[136,-15],[141,-17],[142.5,-10.5],[146,-19],[153,-26],[153,-30],[150,-37.5],[146,-39],[140,-38],[135,-34.5],[131,-31.5],[124,-33.5],[115,-34.5],[114,-28]],"uk":[[-5.5,50],[1.5,51],[1.8,53],[-0.5,54.5],[-2,57.5],[-3,58.5],[-6,58],[-5,55],[-3,54],[-4.5,52]],"ireland":[[-10,52],[-6,52],[-6,55],[-8,55],[-10,54]],"japan":[[130,31],[132,34],[135,34.5],[140,35],[141,38.5],[141.5,41.5],[140.5,41],[139.8,38],[136.5,37],[133,35.5],[131,34.5]],"sumatra":[[95,5.5],[98,4],[104,-2],[106,-6],[101,-3.5]]};
 }
 
-async function renderSeasonMap(races, season) {
-  if (SeasonMap.render(races, season, seasonMapLand)) bindSeasonMapPins($('#seasonMap'));
+async function renderSeasonMap(races, season, isCurrent = () => true) {
+  if (isCurrent() && SeasonMap.render(races, season, seasonMapLand)) bindSeasonMapPins($('#seasonMap'));
 }
 
 function findSeasonMapPin(svg, x, y) {
@@ -3013,6 +3002,34 @@ async function compareWith(a, season, b = null) {
   closeModal();
   await afterModalClosed();
   if (state.tab === 'compare') loadComparePage(); else switchTab('compare');
+}
+
+async function loadComparePage({ signal = null } = {}) {
+  const season = Number($('#compareSeason')?.value) || CURRENT_SEASON;
+  setPageSeason('compare', season);
+  const preset = state.comparePreset?.season === season ? state.comparePreset : null;
+  try {
+    const b = await loadSeasonBundle(season, { signal });
+    if (signal?.aborted || Number($('#compareSeason').value) !== season) return;
+    state.pageData.compare = { season, b };
+    const opts = b.drivers.map(d => `<option value="${esc(d.Driver.driverId)}">${esc(driverName(d.Driver))} · ${esc(d.Constructors?.[0]?.name || '—')}</option>`).join('');
+    const has = id => Boolean(id) && b.drivers.some(d => d.Driver.driverId === id);
+    if (preset) {
+      state.comparePreset = null;
+      // нет напарника — второй пилот первый по зачёту, кроме самого пилота
+      if (!has(preset.b) || preset.b === preset.a) preset.b = b.drivers.find(d => d.Driver.driverId !== preset.a)?.Driver.driverId || '';
+    }
+    ['compareA', 'compareB'].forEach((id, i) => {
+      const el = $('#' + id);
+      const prev = el.value;
+      el.innerHTML = opts;
+      const want = preset ? preset[i ? 'b' : 'a'] : prev;
+      el.value = has(want) ? want : (b.drivers[i]?.Driver.driverId || '');
+    });
+    await renderComparison();
+  } catch {
+    if (!signal?.aborted) $('#compareResult').innerHTML = '<div class="error-box">Не удалось загрузить пилотов сезона. Проверьте сеть.</div>';
+  }
 }
 
 async function renderComparison() {

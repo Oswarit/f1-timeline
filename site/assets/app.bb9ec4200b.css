@@ -4894,6 +4894,8 @@ a.lp-chip:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
 #home .scene .session-row { flex-wrap: wrap; gap: 4px 8px; }
 #home .scene .session-name { flex: 1 1 8em; }
 #home .scene .countdown-box { margin-top: 0; }
+#home .scene .countdown-box[hidden] { display: none; }
+#weekendCalendarLink { margin: 0 var(--pad) var(--pad); }
 .countdown-label { font-size: var(--fs-13); }
 .spoiler-setting { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; align-self: flex-start; font-size: var(--fs-14); cursor: pointer; }
 .spoiler-setting input { accent-color: var(--red); }
