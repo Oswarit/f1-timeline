@@ -927,7 +927,6 @@ async function showDriver(id, season = state.season) {
     ImageObserver.observeAll();
     ChampionHall.decorateDossier();
     $('#modalBody .dp-compare')?.addEventListener('click', e => compareWith(driverObj.driverId, targetSeason, e.currentTarget.dataset.compareMate || null));
-    landCardPhoto($('#modalBody .dp-hero .dp-photo'), 'driver');
     if (!photo) upgradeHeroPhoto(driverObj);
     const careerBox = $('#dpCareer');
     initModalTabs($('#modalBody'), {
@@ -1921,10 +1920,79 @@ async function landCardPhoto(target, kind) {
   }
 }
 
+async function loadStandingsPage({ signal = null, force = false } = {}) {
+  const season = Number($('#standingsSeason').value);
+  setPageSeason('standings', season);
+  const local = state.standings?.season === season ? state.standings : null;
+  const driverData = readSnapshot(`${season}/driverstandings.json`)?.data;
+  const teamData = readSnapshot(`${season}/constructorstandings.json`)?.data;
+  const fastDrivers = local?.drivers || readDrivers(driverData);
+  const fastTeams = local?.teams || readTeams(teamData);
+  showStandingsDates('standings', local || { drivers: fastDrivers, teams: fastTeams, races: readRaces(readSnapshot(`${season}.json`)?.data),
+    editions: { drivers: standingsEdition(driverData, 'snapshot'), teams: standingsEdition(teamData, 'snapshot') } });
+  if (fastDrivers?.length && fastTeams?.length) {
+    $('#standingsCaption').textContent = `${season}`;
+    $('#driversTable').innerHTML = renderDriverTable(fastDrivers, 24, season);
+    renderStandingsFight(season, fastDrivers);
+    PageMotif.stat('standings', fastDrivers[0]?.points, `Лидер: ${driverName(fastDrivers[0]?.Driver)}`);
+    $('#constructorsTable').innerHTML = renderTeamTable(fastTeams, season);
+    PosMoves.decorateAll(season);
+  } else {
+    $('#driversTable').innerHTML = Skeletons.table(8, 6);
+    $('#constructorsTable').innerHTML = Skeletons.table(6, 5);
+  }
+  try {
+    const b = await loadSeasonBundle(season, { signal, force });
+    if (signal?.aborted || Number($('#standingsSeason').value) !== season) return;
+    $('#standingsCaption').textContent = `${season}`;
+    state.pageData.standings = { season, b };
+    showStandingsDates('standings', b);
+    $('#driversTable').innerHTML = renderDriverTable(b.drivers, 24, season);
+    renderStandingsFight(season, b.drivers);
+    PageMotif.stat('standings', b.drivers[0]?.points, `Лидер: ${driverName(b.drivers[0]?.Driver)}`);
+    $('#constructorsTable').innerHTML = renderTeamTable(b.teams, season);
+    if (!navigator.webdriver && navigator.onLine && !$('#posHistoryChart')) setTimeout(() => { if (state.tab === 'standings' && Number($('#standingsSeason')?.value) === season && !$('#posHistoryChart')) PosHistory.show(season); }, 900);
+    PosMoves.decorateAll(season);
+    ImageObserver.observeAll?.();
+  } catch {
+    if (signal?.aborted || Number($('#standingsSeason').value) !== season) return;
+    showStandingsDates('standings', null);
+    $('#driversTable').innerHTML = '<div class="error-box"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:8px 0 0">Не удалось загрузить зачёт пилотов.</p><button class="btn secondary" style="margin-top:8px" onclick="loadStandingsPage()">Повторить попытку</button></div>';
+    $('#constructorsTable').innerHTML = '<div class="error-box"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:8px 0 0">Не удалось загрузить зачёт команд.</p></div>';
+  }
+}
+
 async function loadCircuitsPage() {
   populateCircuitFilters();
   renderCircuitCatalog();
   PageMotif.circuits();
+}
+
+async function loadTeamsPage({ signal = null } = {}) {
+  const season = Number($('#teamSeason').value);
+  setPageSeason('teams', season);
+  { const n = state.standings?.teams?.length || readTeams(readSnapshot(`${season}/constructorstandings.json`)?.data).length; if (n) PageMotif.stat('teams', n, `${ruPlural(n, ['команда', 'команды', 'команд'])} в сезоне ${season}`); }
+
+  const fastTeams = (state.standings?.season === season ? state.standings.teams : null) ||
+                    readTeams(readSnapshot(`${season}/constructorstandings.json`)?.data);
+  const fastDrivers = (state.standings?.season === season ? state.standings.drivers : null) ||
+                      readDrivers(readSnapshot(`${season}/driverstandings.json`)?.data);
+  if (fastTeams?.length) {
+    renderTeams(fastTeams, fastDrivers || [], season);
+  } else {
+    $('#teamGrid').innerHTML = Skeletons.cards(6);
+  }
+  try {
+    const b = await loadSeasonBundle(season, { signal });
+    if (signal?.aborted || Number($('#teamSeason').value) !== season) return;
+    state.pageData.teams = { season, b };
+    renderTeams(b.teams, b.drivers, season);
+  } catch {
+    if (signal?.aborted) return;
+    if (!$('#teamGrid .team-card')) {
+      $('#teamGrid').innerHTML = '<div class="error-box"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:8px 0 0">Не удалось загрузить команды сезона.</p><button class="btn secondary" style="margin-top:8px" onclick="loadTeamsPage()">Повторить попытку</button></div>';
+    }
+  }
 }
 
 async function loadHistory({ signal = null } = {}) {
@@ -2960,12 +3028,26 @@ async function renderComparison() {
   }
   const gen = state._compareGen = (state._compareGen || 0) + 1;
   out.innerHTML = '<div class="loading">Сравниваем этап за этапом…</div>';
-  const [ra, rb] = await Promise.all([
-    loadDriverSeasonRounds(ctx.season, a, null, { onFresh: () => renderComparison() }),
-    loadDriverSeasonRounds(ctx.season, b, null, { onFresh: () => renderComparison() })
-  ]);
-  if (gen !== state._compareGen) return;
+  const rounds = new Map();
+  const active = () => gen === state._compareGen && state.tab === 'compare' && ctx === state.pageData.compare &&
+    a === $('#compareA').value && b === $('#compareB').value;
+  let ready = false;
+  const paint = () => {
+    if (ready && active()) paintComparison(ctx, a, b, rounds.get(a), rounds.get(b));
+  };
+  const load = async id => {
+    const initial = await loadDriverSeasonRounds(ctx.season, id, _currentTabAbortController?.signal, {
+      onFresh: latest => { rounds.set(id, latest); paint(); }
+    });
+    if (!rounds.has(id)) rounds.set(id, initial);
+  };
+  await Promise.all([load(a), load(b)]);
+  ready = true;
+  paint();
+}
 
+function paintComparison(ctx, a, b, ra, rb) {
+  const out = $('#compareResult');
   const sa = ctx.b.drivers.find(d => d.Driver.driverId === a);
   const sb = ctx.b.drivers.find(d => d.Driver.driverId === b);
   const ma = driverSeasonMetrics(ra);
@@ -3295,7 +3377,7 @@ function driverHeroHtml({ d, teamName, pal, season, trait, favId, photo = null, 
     <span class="hud-corner tl" aria-hidden="true"></span><span class="hud-corner tr" aria-hidden="true"></span><span class="hud-corner bl" aria-hidden="true"></span><span class="hud-corner br" aria-hidden="true"></span>
     <span class="dp-stripe"></span>
     ${num ? `<div class="dp-bignum" aria-hidden="true">${esc(num)}</div>` : ''}
-    ${photo ? `<img class="dp-photo${LoadedImgs.has(photo) ? ' loaded' : ''}" src="${esc(photo)}" alt="${esc(driverName(d))}" width="432" height="540" fetchpriority="high" referrerpolicy="no-referrer" data-initials="${esc(initials)}" onerror="driverPhotoFallback(this)">` : ''}
+    ${photo ? `<img class="dp-photo" src="${esc(photo)}" alt="${esc(driverName(d))}" width="432" height="540" fetchpriority="high" referrerpolicy="no-referrer" data-initials="${esc(initials)}" onerror="driverPhotoFallback(this)">` : ''}
     ${photo ? '' : `<div class="avatar dp-avatar" data-wiki="${esc(d.url || '')}">${esc(initials)}</div>`}
     <div class="dp-id">
       <div class="dp-name">

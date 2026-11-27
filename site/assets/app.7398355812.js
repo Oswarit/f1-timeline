@@ -1352,16 +1352,13 @@ function teamColor(name) {
 }
 
 // Плашка состояния: на экране одно понятное слово, подробности в подсказке и в окне «Состояние источников».
-// Сохранённые данные при доступном источнике считаются свежими, чтобы на разных вкладках не было разных слов.
 function statusWords(type, text) {
   const t = String(text || '');
   const hm = ts => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const date = (t.match(/от (.+)$/) || [])[1];
-  let jol = null;
-  try { jol = Health.state?.jolpica || null; } catch {}
   if (type === 'updated') return /ОНЛАЙН/.test(t) ? ['В сети', 'Соединение восстановлено', 'updated'] : ['Свежие', `Данные получены из сети в ${hm(Date.now())}`, 'updated'];
   if (type === 'cached' && /АРХИВ/.test(t)) return ['Архив', 'Архивный сезон: данные встроены в сайт', 'cached'];
-  if (type === 'cached') return jol?.ok ? ['Свежие', `Данные сохранены недавно, источник доступен (проверка в ${hm(jol.ts || Date.now())})`, 'updated'] : ['Из памяти', 'Показаны недавно сохранённые данные', 'cached'];
+  if (type === 'cached') return ['Из памяти', 'Показаны сохранённые данные', 'cached'];
   if (type === 'snapshot') return ['Без сети', `Сеть недоступна: показан встроенный снимок${date ? ` от ${date}` : ''}`, 'snapshot'];
   if (type === 'offline' && /ЧАСТИЧ/.test(t)) return ['Частично', 'Часть данных не загрузилась, показано то, что есть', 'offline'];
   if (type === 'offline') return ['Без сети', /НЕТ ДАННЫХ|ОШИБКА/.test(t) ? 'Нет связи с сервером, данных нет' : t === 'OFFLINE' ? 'Устройство не в сети' : 'Сеть недоступна: показаны сохранённые данные', 'offline'];
@@ -1945,6 +1942,7 @@ async function loadSeasonBundle(season = state.season, { force = false, signal =
 
   return {
     season,
+    editions: { drivers: standingsEdition(s?.data, s?.source), teams: standingsEdition(c?.data, c?.source) },
     drivers: driversArr,
     teams: teamsArr,
     races: racesArr
@@ -2248,6 +2246,29 @@ function renderTeamTable(list, season = state.season, limit = 12) {
   </table>`;
 }
 
+function standingsEdition(data, source) {
+  const list = data?.MRData?.StandingsTable?.StandingsLists?.[0];
+  return { round: Number(list?.round) || 0, source };
+}
+
+function showStandingsDates(page, bundle, fromCache = false) {
+  for (const kind of ['drivers','teams']) {
+    const el = document.querySelector(`[data-asof="${page}-${kind}"]`);
+    const edition = bundle?.editions?.[kind];
+    const race = edition?.round && bundle.races?.find(r => Number(r.round) === edition.round);
+    const after = race?.raceName ? `После ${ruGP(race.raceName)}` : edition?.round ? `После этапа ${edition.round}` : 'Этап не указан';
+    const saved = fromCache || ['snapshot', 'stale', 'cache', 'indexeddb'].includes(edition?.source);
+    el.textContent = bundle?.[kind]?.length ? after + (saved ? ' · сохранённые данные' : '') : '';
+  }
+}
+
+function syncHomeSpoilers() {
+  const race = $('#lastRace').dataset.watchKey;
+  const enabled = safeStorage.get('f1tl:spoilerFree') === '1';
+  $('#spoilerFree').checked = enabled;
+  document.documentElement.classList.toggle('mask-home', enabled && (race === undefined || Boolean(race && !Watch.has(race))));
+}
+
 function rSeasonOf(r, fallback) { return Number(r?.season || fallback); }
 function renderLastRace(races) {
   const currentSeason = Number(races[0]?.season) || Number(state.season) || CURRENT_SEASON;
@@ -2257,6 +2278,14 @@ function renderLastRace(races) {
     return (hasKnownResults || isRaceCompleted({ ...r, season: rSeason })) && Number.isFinite(scheduleMoment(r)) && scheduleMoment(r) <= Date.now();
   });
   const r = done.at(-1);
+  const root = $('#lastRace');
+  const key = r ? `${rSeasonOf(r, currentSeason)}-${r.round}` : '';
+  if (root.dataset.watchKey !== key) {
+    $('#raceChangesCard').hidden = true;
+    ++RaceChanges._t;
+  }
+  root.dataset.watchKey = key;
+  syncHomeSpoilers();
   if (!r) {
     if (!races?.length) {
       $('#lastRace').innerHTML = '<div class="empty"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:6px 0 0">В выбранном сезоне данные этапов недоступны.</p></div>';
@@ -2271,51 +2300,72 @@ function renderLastRace(races) {
       <div class="eyebrow">Раунд ${esc(r.round)}</div>
       <h3 style="margin:2px 0 4px">${esc(ruGP(r.raceName))}</h3>
       <p class="subtle" style="margin:0 0 10px">${esc(r.Circuit?.circuitName)} · ${fmtSchedule(r)}</p>
-      <div class="last-race-actions"><button class="btn secondary" data-race="${esc(r.round)}" data-season="${esc(state.season)}" style="font-size:12px;padding:6px 12px">Открыть результаты</button><button type="button" class="btn secondary" data-share-race="${esc(r.round)}" data-season="${esc(rSeasonOf(r, currentSeason))}" style="font-size:12px;padding:6px 12px">Поделиться итогом</button></div>
+      <div class="last-race-actions"><button class="btn" data-race="${esc(r.round)}" data-season="${esc(rSeasonOf(r, currentSeason))}">Открыть результаты</button><button type="button" class="btn secondary" data-share-race="${esc(r.round)}" data-season="${esc(rSeasonOf(r, currentSeason))}" style="font-size:12px;padding:6px 12px">Поделиться итогом</button></div>
     </div>
-  </div><div class="last-podium" id="lastPodium"></div>`;
+  </div><div class="spoiler-gate"><p>Итоги скрыты до просмотра гонки.</p>${Watch.button(rSeasonOf(r, currentSeason), Number(r.round))}</div>
+  <div class="last-podium" id="lastPodium"></div>`;
   $('#lastRace').classList.remove('empty');
+  const box = $('#lastPodium');
   const rSeason = Number(r.season || currentSeason);
   (async () => {
     try {
       const path = `${rSeason}/${r.round}/results.json`;
       const res = readSnapshot(path) || await request(path);
       const results = readRaces(res.data)[0]?.Results || [];
-      const box = $('#lastPodium');
-      if (box?.isConnected) box.innerHTML = racePodiumHtml(results);
-    } catch { /* the card stays without a podium */ }
+      if (box.isConnected) box.innerHTML = racePodiumHtml(results) || '<p class="subtle">Данных о подиуме пока нет.</p>';
+    } catch {
+      if (box.isConnected) box.textContent = 'Не удалось загрузить подиум.';
+    }
   })();
 }
 
-function evaluateSessionMoment(sessionObj, fallbackName) {
-  if (!sessionObj) return { name: fallbackName, time: 'Н/Д', badgeClass: 'scheduled', badgeLabel: 'ОЖИДАЕТСЯ' };
-  const sDate = sessionObj.date;
-  const sTime = sessionObj.time;
-  let moment = NaN;
-  if (sDate) {
-    moment = Date.parse(sTime ? `${sDate}T${sTime.replace('Z', '')}Z` : `${sDate}T12:00:00Z`);
-  }
+function renderWeekend(race, races) {
+  const fold = $('#weekendFold'), line = $('#nextSession'), box = $('#raceWeekendContainer');
+  clearTimeout(renderWeekend.timer);
+  fold.hidden = !race;
+  if (!race) { line.textContent = ''; box.replaceChildren(); return; }
   const now = Date.now();
-  let badgeClass = 'scheduled';
-  let badgeLabel = 'ОЖИДАЕТСЯ';
-
-  if (Number.isFinite(moment)) {
-    const twoHours = 2 * 60 * 60 * 1000;
-    if (now >= moment && now <= moment + twoHours) {
-      badgeClass = 'live';
-      badgeLabel = 'В ЭФИРЕ';
-    } else if (now > moment + twoHours) {
-      badgeClass = 'completed';
-      badgeLabel = 'ЗАВЕРШЕНО';
-    }
+  const sessions = weekendSessions([race]);
+  const next = sessions.find(s => s.start > now);
+  const current = sessions.find(s => s.start <= now && s.end > now);
+  const dateFmt = new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+  const timeFmt = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const floatingDateFmt = new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const rows = [];
+  for (const [key, label] of [...SESSION_DEFS, ['Race', 'Гонка']]) {
+    const entry = key === 'Race' ? race : race[key];
+    if (!entry?.date) continue;
+    const start = raceTime(entry);
+    const dated = Number.isFinite(start);
+    const date = dated ? start : raceDate(entry);
+    if (!Number.isFinite(date)) continue;
+    const status = dated && current?.key === key ? 'live' : dated && start <= now ? 'completed' : 'scheduled';
+    rows.push({ date, dateOnly: !dated, day: (dated ? dateFmt : floatingDateFmt).format(date), label, status,
+      time: dated ? timeFmt.format(start) : 'Время уточняется' });
   }
-
-  return {
-    name: fallbackName,
-    time: sTime ? sTime.slice(0, 5) : 'Н/Д',
-    badgeClass,
-    badgeLabel
-  };
+  const days = new Map();
+  for (const row of rows.sort((a, b) => a.date - b.date)) {
+    if (!days.has(row.day)) days.set(row.day, []);
+    days.get(row.day).push(row);
+  }
+  const uncertain = rows.find(s => s.dateOnly && s.date + 43200000 > now && (!next || s.date - 43200000 < next.start));
+  if (uncertain) line.textContent = `Ближайшая сессия · ${uncertain.label} · ${uncertain.day}, время уточняется`;
+  else if (next) line.textContent = `Ближайшая сессия · ${next.label} · ${dateFmt.format(next.start)}, ${timeFmt.format(next.start)} по вашему времени`;
+  else line.textContent = 'Время ближайшей сессии пока неизвестно';
+  const badges = { live: 'По расписанию', completed: 'Прошла', scheduled: 'Ожидается' };
+  box.innerHTML = '<div class="weekend-grid">' + [...days].map(([day, items]) => `
+    <div class="weekend-day-card"><div class="weekend-day-title">${esc(day)}</div>
+      ${items.map(s => `<div class="session-row session-${s.status === 'scheduled' ? 'upcoming' : s.status}">
+        <span class="session-name">${esc(s.label)}</span><span class="session-time">${esc(s.time)}</span>
+        <span class="session-badge ${s.status}">${badges[s.status]}</span></div>`).join('')}
+    </div>`).join('') + '</div>';
+  const boundary = Math.min(next?.start ?? Infinity, current?.end ?? Infinity, uncertain ? uncertain.date + 43200000 : Infinity, scheduleMoment(race));
+  if (Number.isFinite(boundary) && boundary > now) {
+    renderWeekend.timer = setTimeout(() => {
+      if (nextRace(races) === race) renderWeekend(race, races);
+      else renderNext(races);
+    }, Math.min(boundary - now + 25, 2147483647));
+  }
 }
 
 function nextRace(races) {
@@ -2324,20 +2374,22 @@ function nextRace(races) {
 
 function renderNext(races) {
   const n = nextRace(races);
+  renderWeekend(n, races);
   if (window.countdownTimer) {
     clearInterval(window.countdownTimer);
     window.countdownTimer = null;
   }
 
+  $('.countdown-label').hidden = !n;
   if (!n) {
+    $('#heroLapHud').replaceChildren();
+    $('#nextTrack').removeAttribute('data-drawn');
     if (!races?.length) {
       $('#nextName').textContent = 'НЕТ ДАННЫХ';
       $('#nextMeta').textContent = 'Данные расписания календаря временно недоступны.';
-      $('#nextState').textContent = 'НЕТ ДАННЫХ';
     } else {
       $('#nextName').textContent = 'Сезон завершён';
       $('#nextMeta').textContent = 'Все этапы календаря состоялись. Выберите архивный сезон.';
-      $('#nextState').textContent = 'СЕЗОН ЗАВЕРШЁН';
     }
     $('#cdDays').textContent = '--';
     $('#cdHours').textContent = '--';
@@ -2372,96 +2424,7 @@ function renderNext(races) {
   const nextMetaVal = `${n.Circuit?.circuitName || 'Автодром F1'} · ${fmtSchedule(n)}`;
   if ($('#nextMeta').textContent !== nextMetaVal) $('#nextMeta').textContent = nextMetaVal;
 
-  const isSprint = n.Sprint ? true : false;
-  const sFP1 = evaluateSessionMoment(n.FirstPractice, 'FP1 (1-я тренировка)');
-  const sFP2 = evaluateSessionMoment(n.SecondPractice || n.SprintQualifying, isSprint ? 'Sprint Qualifying' : 'FP2 (2-я тренировка)');
-  const sFP3 = evaluateSessionMoment(n.ThirdPractice || n.Sprint, isSprint ? 'Sprint Race' : 'FP3 (3-я тренировка)');
-  const sQual = evaluateSessionMoment(n.Qualifying, 'Квалификация Гран-при');
-  const sRace = evaluateSessionMoment({ date: n.date, time: n.time }, 'Гонка');
-
-  const allSessions = [sFP1, sFP2, sFP3, sQual, sRace];
-  const activeSession = allSessions.find(s => s.badgeClass === 'live');
-  const nextStateEl = $('#nextState');
-  if (nextStateEl) {
-    if (activeSession) {
-      nextStateEl.textContent = `● LIVE: ${activeSession.name}`;
-      nextStateEl.className = 'pill pill-live interactive';
-    } else {
-      nextStateEl.textContent = exact ? 'РАСПИСАНИЕ СЕССИЙ' : 'ДАТА ОПУБЛИКОВАНА';
-      nextStateEl.className = 'pill interactive';
-    }
-    nextStateEl.setAttribute('role', 'button');
-    nextStateEl.setAttribute('tabindex', '0');
-    nextStateEl.setAttribute('aria-controls', 'weekendFold');
-    nextStateEl.setAttribute('title', 'Показать / скрыть расписание уикенда');
-    const foldEl = document.getElementById('weekendFold');
-    nextStateEl.setAttribute('aria-expanded', foldEl?.open ? 'true' : 'false');
-
-    if (!nextStateEl.dataset.bound) {
-      nextStateEl.dataset.bound = '1';
-      const toggleFold = () => {
-        const f = document.getElementById('weekendFold');
-        if (!f) return;
-        f.open = !f.open;
-        safeStorage.set('f1tl:foldOpen', f.open ? '1' : '0');
-        nextStateEl.setAttribute('aria-expanded', f.open ? 'true' : 'false');
-        if (f.open) {
-          f.classList.remove('highlight-flash');
-          void f.offsetWidth;
-          f.classList.add('highlight-flash');
-          f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      };
-      nextStateEl.addEventListener('click', toggleFold);
-      nextStateEl.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleFold();
-        }
-      });
-      if (foldEl && !foldEl.dataset.boundSync) {
-        foldEl.dataset.boundSync = '1';
-        foldEl.addEventListener('toggle', () => {
-          nextStateEl.setAttribute('aria-expanded', foldEl.open ? 'true' : 'false');
-          safeStorage.set('f1tl:foldOpen', foldEl.open ? '1' : '0');
-        });
-      }
-    }
-  }
   WeekendWeather.load(n);
-
-  const wContainer = document.getElementById('raceWeekendContainer');
-  if (wContainer && n) {
-    const rowClass = s => `session-row ${s.badgeClass === 'live' ? 'session-live' : (s.badgeClass === 'scheduled' ? 'session-upcoming' : '')}`;
-    wContainer.innerHTML = `
-      <div class="weekend-grid">
-        <div class="weekend-day-card">
-          <div class="weekend-day-title">Пятница · Сессии</div>
-          <div class="${rowClass(sFP1)}"><span class="session-name">${esc(sFP1.name)}</span><span class="session-time">${esc(sFP1.time)}</span><span class="session-badge ${esc(sFP1.badgeClass)}">${esc(sFP1.badgeLabel)}</span></div>
-          <div class="${rowClass(sFP2)}"><span class="session-name">${esc(sFP2.name)}</span><span class="session-time">${esc(sFP2.time)}</span><span class="session-badge ${esc(sFP2.badgeClass)}">${esc(sFP2.badgeLabel)}</span></div>
-        </div>
-        <div class="weekend-day-card">
-          <div class="weekend-day-title">Суббота · ${isSprint ? 'Спринт и Квалификация' : 'Квалификация'}</div>
-          <div class="${rowClass(sFP3)}"><span class="session-name">${esc(sFP3.name)}</span><span class="session-time">${esc(sFP3.time)}</span><span class="session-badge ${esc(sFP3.badgeClass)}">${esc(sFP3.badgeLabel)}</span></div>
-          <div class="${rowClass(sQual)}"><span class="session-name">${esc(sQual.name)}</span><span class="session-time">${esc(sQual.time)}</span><span class="session-badge ${esc(sQual.badgeClass)}">${esc(sQual.badgeLabel)}</span></div>
-        </div>
-        <div class="weekend-day-card">
-          <div class="weekend-day-title">Воскресенье · Гонка</div>
-          <div class="${rowClass(sRace)}"><span class="session-name">${esc(sRace.name)}</span><span class="session-time">${esc(sRace.time)}</span><span class="session-badge ${esc(sRace.badgeClass)}">${esc(sRace.badgeLabel)}</span></div>
-        </div>
-      </div>
-    `;
-  }
-
-  const fold = document.getElementById('weekendFold');
-  if (fold) {
-    const savedFold = safeStorage.get('f1tl:foldOpen');
-    if (savedFold === '1' && !fold.open) fold.open = true;
-    else if (savedFold === '0' && fold.open) fold.open = false;
-    const hint = document.getElementById('weekendFoldHint');
-    if (hint && hint.textContent !== ruGP(n.raceName)) hint.textContent = ruGP(n.raceName);
-  }
 
   if (exact) {
     startCountdown(exact);
@@ -2482,7 +2445,6 @@ function startCountdown(t) {
       $('#cdHours').textContent = '00';
       $('#cdMins').textContent = '00';
       $('#cdSecs').textContent = '00';
-      $('#nextState').textContent = 'СЕССИЯ НАЧАЛАСЬ';
       clearInterval(window.countdownTimer);
       return;
     }
@@ -3513,6 +3475,7 @@ async function loadHome({ force = false, signal = null } = {}) {
     if (snapS?.data && snapC?.data && snapR?.data) {
       cb = {
         season: state.season,
+        editions: { drivers: standingsEdition(snapS.data, 'snapshot'), teams: standingsEdition(snapC.data, 'snapshot') },
         drivers: readDrivers(snapS.data),
         teams: readTeams(snapC.data),
         races: readRaces(snapR.data)
@@ -3524,6 +3487,7 @@ async function loadHome({ force = false, signal = null } = {}) {
     state.calendar = cb.races;
     state.pageData.home = { season: state.season, b: cb };
     setHeroTitle(state.season);
+    showStandingsDates('home', cb, true);
     renderHeroSummary(cb);
     renderHeroFight(cb);
     if (cb.races?.length) {
@@ -3547,6 +3511,7 @@ async function loadHome({ force = false, signal = null } = {}) {
     $('#homeDrivers').innerHTML = renderDriverTable(b.drivers, 5);
     $('#homeTeams').innerHTML = renderTeamTable(b.teams, state.season, 5);
     PosMoves.decorateAll(state.season);
+    showStandingsDates('home', b);
     renderLastRace(b.races);
     RaceChanges.render(state.season);
     renderNext(b.races);
@@ -3565,7 +3530,7 @@ async function loadHome({ force = false, signal = null } = {}) {
       const snapDate = snap?._metadata?.generatedAt ? fmtDate(new Date(snap._metadata.generatedAt).getTime()) : '2026-10-13';
       setStatus('snapshot', `ВСТРОЕННЫЙ СНЭПШОТ (СЕТЬ НЕДОСТУПНА) от ${snapDate}`);
       toast('Сеть недоступна. Отображены данные встроенного снэпшота.');
-    } else if (b.drivers?.source === 'network') {
+    } else if ([b.drivers, b.teams, b.races].every(rows => rows?.source === 'network')) {
       setStatus('updated', 'ОБНОВЛЕНО');
       const el = $('#syncTime');
       if (el) el.textContent = `Синхронизировано: ${fmtDate(Date.now())}`;
@@ -4154,7 +4119,6 @@ const SeasonMap = {
   render(races, season, getLand) {
     const card = $('#seasonMapCard'), box = $('#seasonMap');
     if (!card || !box) return;
-    this.bindControls();
     const pts = (races || []).map(r => ({ r, lat: r.Circuit?.Location?.lat, lon: r.Circuit?.Location?.long })).filter(x => Number.isFinite(+x.lat) && Number.isFinite(+x.lon));
     if (!pts.length) { card.hidden = true; return; }
     card.hidden = false;
@@ -4490,7 +4454,7 @@ const RaceChanges = {
       const list = path => request(path).then(x => x.data?.MRData?.StandingsTable?.StandingsLists?.[0] || null);
       const curD = await list(`${season}/driverstandings.json`);
       const R = Number(curD?.round);
-      if (!(R >= 2)) throw new Error('no previous round');
+      if ($('#lastRace').dataset.watchKey !== `${season}-${R}` || !(R >= 2)) throw new Error('no previous round');
       const [prevD, curT, prevT, res] = await Promise.all([
         list(`${season}/${R - 1}/driverstandings.json`),
         list(`${season}/${R}/constructorstandings.json`).catch(() => null),
@@ -4873,7 +4837,7 @@ const LazyMod = {
   warm() {
     if (!SITE?.lazy) return;
     const go = () => this.load().catch(() => {});
-    if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 1500);
+    setTimeout(go, 5000);
   }
 };
 
@@ -5065,14 +5029,13 @@ const PhotoFlight = {
   init() {
     document.addEventListener('click', e => {
       this.from = null;
-      const card = e.target.closest?.('.driver-card, .team-card, tr[data-driver], tr[data-team]');
+      const card = e.target.closest?.('.team-card, tr[data-team]');
       if (!card || e.target.closest('.fav-btn')) { return; }
-      const team = card.matches('.team-card, tr[data-team]');
-      const src = team ? card.querySelector('.team-logo img') : card.querySelector('.avatar.has-photo img, .avatar > img');
+      const src = card.querySelector('.team-logo img');
       if (!src || !src.complete || !src.naturalWidth) { this.from = null; return; }
       const r = src.getBoundingClientRect();
       if (!r.width) return;
-      this.from = { kind: team ? 'team' : 'driver', src: src.currentSrc || src.src, rect: r, radius: getComputedStyle(team ? src : (src.closest('.avatar') || src)).borderRadius, t: Date.now() };
+      this.from = { kind: 'team', src: src.currentSrc || src.src, rect: r, radius: getComputedStyle(src).borderRadius, t: Date.now() };
     }, true);
   }
 };
@@ -5423,42 +5386,7 @@ function renderStandingsFight(season, drivers) {
 function loadStandings(opts) { return loadStandingsPage(opts); }
 function loadCalendar(opts) { return loadCalendarPage(opts); }
 
-async function loadStandingsPage({ signal = null } = {}) {
-  const season = Number($('#standingsSeason').value);
-  setPageSeason('standings', season);
-
-  const fastDrivers = (state.standings?.season === season ? state.standings.drivers : null) ||
-                      readDrivers(readSnapshot(`${season}/driverstandings.json`)?.data);
-  const fastTeams = (state.standings?.season === season ? state.standings.teams : null) ||
-                    readTeams(readSnapshot(`${season}/constructorstandings.json`)?.data);
-  if (fastDrivers?.length && fastTeams?.length) {
-    $('#standingsCaption').textContent = `${season}`;
-    $('#driversTable').innerHTML = renderDriverTable(fastDrivers, 24, season);
-    renderStandingsFight(season, fastDrivers);
-    PageMotif.stat('standings', fastDrivers[0]?.points, `Лидер: ${driverName(fastDrivers[0]?.Driver)}`);
-    $('#constructorsTable').innerHTML = renderTeamTable(fastTeams, season);
-    PosMoves.decorateAll(season);
-  } else {
-    $('#driversTable').innerHTML = Skeletons.table(8, 6);
-    $('#constructorsTable').innerHTML = Skeletons.table(6, 5);
-  }
-  try {
-    const b = await loadSeasonBundle(season, { signal });
-    if (signal?.aborted || Number($('#standingsSeason').value) !== season) return;
-    $('#standingsCaption').textContent = `${season}`;
-    state.pageData.standings = { season, b };
-    $('#driversTable').innerHTML = renderDriverTable(b.drivers, 24, season);
-    renderStandingsFight(season, b.drivers);
-    PageMotif.stat('standings', b.drivers[0]?.points, `Лидер: ${driverName(b.drivers[0]?.Driver)}`);
-    $('#constructorsTable').innerHTML = renderTeamTable(b.teams, season);
-    if (!navigator.webdriver && navigator.onLine && !$('#posHistoryChart')) setTimeout(() => { if (state.tab === 'standings' && Number($('#standingsSeason')?.value) === season && !$('#posHistoryChart')) PosHistory.show(season); }, 900);
-    PosMoves.decorateAll(season);
-    ImageObserver.observeAll?.();
-  } catch {
-    $('#driversTable').innerHTML = '<div class="error-box"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:8px 0 0">Не удалось загрузить зачёт пилотов.</p><button class="btn secondary" style="margin-top:8px" onclick="loadStandingsPage()">Повторить попытку</button></div>';
-    $('#constructorsTable').innerHTML = '<div class="error-box"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:8px 0 0">Не удалось загрузить зачёт команд.</p></div>';
-  }
-}
+async function loadStandingsPage(...args) { const self = loadStandingsPage; await LazyMod.load(); if (loadStandingsPage === self) throw new Error("loadStandingsPage: second script missing"); return loadStandingsPage(...args); }
 
 async function loadCalendarPage({ signal = null } = {}) {
   const season = Number($('#calendarSeason')?.value) || state.seasons?.calendar || CURRENT_SEASON;
@@ -5505,32 +5433,7 @@ async function loadDriversPage({ signal = null } = {}) {
   }
 }
 
-async function loadTeamsPage({ signal = null } = {}) {
-  const season = Number($('#teamSeason').value);
-  setPageSeason('teams', season);
-  { const n = state.standings?.teams?.length || readTeams(readSnapshot(`${season}/constructorstandings.json`)?.data).length; if (n) PageMotif.stat('teams', n, `${ruPlural(n, ['команда', 'команды', 'команд'])} в сезоне ${season}`); }
-
-  const fastTeams = (state.standings?.season === season ? state.standings.teams : null) ||
-                    readTeams(readSnapshot(`${season}/constructorstandings.json`)?.data);
-  const fastDrivers = (state.standings?.season === season ? state.standings.drivers : null) ||
-                      readDrivers(readSnapshot(`${season}/driverstandings.json`)?.data);
-  if (fastTeams?.length) {
-    renderTeams(fastTeams, fastDrivers || [], season);
-  } else {
-    $('#teamGrid').innerHTML = Skeletons.cards(6);
-  }
-  try {
-    const b = await loadSeasonBundle(season, { signal });
-    if (signal?.aborted || Number($('#teamSeason').value) !== season) return;
-    state.pageData.teams = { season, b };
-    renderTeams(b.teams, b.drivers, season);
-  } catch {
-    if (signal?.aborted) return;
-    if (!$('#teamGrid .team-card')) {
-      $('#teamGrid').innerHTML = '<div class="error-box"><span class="prov-badge prov-unavail">НЕТ ДАННЫХ</span><p style="margin:8px 0 0">Не удалось загрузить команды сезона.</p><button class="btn secondary" style="margin-top:8px" onclick="loadTeamsPage()">Повторить попытку</button></div>';
-    }
-  }
-}
+async function loadTeamsPage(...args) { const self = loadTeamsPage; await LazyMod.load(); if (loadTeamsPage === self) throw new Error("loadTeamsPage: second script missing"); return loadTeamsPage(...args); }
 
 async function loadHistory(...args) { const self = loadHistory; await LazyMod.load(); if (loadHistory === self) throw new Error("loadHistory: second script missing"); return loadHistory(...args); }
 
@@ -5652,10 +5555,7 @@ async function refreshAll() {
     await loadHome({ force: true });
 
     if (state.tab === 'standings') {
-      const s = Number($('#standingsSeason').value) || state.season;
-      const b = await loadSeasonBundle(s, { force: true });
-      state.standings = b;
-      renderStandings(b);
+      await loadStandingsPage({ force: true });
     } else if (state.tab === 'calendar') {
       const s = Number($('#calendarSeason').value) || state.season;
       const b = await loadSeasonBundle(s, { force: true });
@@ -5676,8 +5576,7 @@ async function refreshAll() {
       await loadHistory();
     }
 
-    setStatus('updated', 'СЕТЬ (LIVE)');
-    toast('Данные успешно обновлены из официального источника');
+    toast('Проверка обновлений завершена');
   } catch (err) {
     console.error('refreshAll error:', err);
     setStatus('error', 'ОШИБКА ОБНОВЛЕНИЯ');
@@ -5909,6 +5808,17 @@ function initEvents() {
   TabSwipe.init();
   SheetSwipe.init();
   PhotoFlight.init();
+  SeasonMap.bindControls();
+  const track = $('#homeScene .scene-track');
+  const mobileLayout = matchMedia('(max-width: 860px)');
+  const placeTrack = () => (mobileLayout.matches ? $('#mobileTrack') : $('#homeScene')).append(track);
+  placeTrack();
+  mobileLayout.addEventListener('change', placeTrack);
+  syncHomeSpoilers();
+  $('#spoilerFree').addEventListener('change', e => {
+    safeStorage.set('f1tl:spoilerFree', e.target.checked ? '1' : '0');
+    syncHomeSpoilers();
+  });
 
   $('#modalClose')?.addEventListener('click', closeModal);
   $('#modal')?.addEventListener('click', e => {
@@ -5927,6 +5837,7 @@ function initEvents() {
     if (watch) {
       e.stopPropagation();
       const on = Watch.toggle(watch.dataset.watch);
+      if (on && watch.closest('.spoiler-gate')) $('#lastRace [data-race]')?.focus();
       toast(on ? 'Гонка отмечена как просмотренная' : 'Отметка снята');
       return;
     }
@@ -6175,6 +6086,7 @@ function prewarmSnapshotBundles() {
         if (sS?.data && sC?.data && sR?.data) {
           writeCache(`bundle:${y}`, {
             season: y,
+            editions: { drivers: standingsEdition(sS.data, sS.source), teams: standingsEdition(sC.data, sC.source) },
             drivers: readDrivers(sS.data),
             teams: readTeams(sC.data),
             races: readRaces(sR.data)
@@ -6647,6 +6559,7 @@ async function loadComparePage({ signal = null } = {}) {
 }
 
 async function renderComparison(...args) { const self = renderComparison; await LazyMod.load(); if (renderComparison === self) throw new Error("renderComparison: second script missing"); return renderComparison(...args); }
+
 
 
 function buildSeasonIcs(races) {
@@ -7166,12 +7079,9 @@ const Favs = {
 
 try {
   const fold0 = document.getElementById('weekendFold');
-  const races0 = readRaces(readSnapshot(`${CURRENT_SEASON}.json`)?.data);
-  const n0 = nextRace(races0);
-  const t0 = n0 ? (raceTime(n0) || scheduleMoment(n0)) : NaN;
-  if (fold0 && Number.isFinite(t0)) fold0.open = t0 - Date.now() < 7 * 24 * 3600 * 1000;
-  else if (safeStorage.get('f1tl:foldOpen') === '1') fold0.open = true;
-} catch { try { if (safeStorage.get('f1tl:foldOpen') === '1') document.getElementById('weekendFold').open = true; } catch {} }
+  fold0.open = safeStorage.get('f1tl:foldOpen') === '1';
+  fold0.addEventListener('toggle', () => safeStorage.set('f1tl:foldOpen', fold0.open ? '1' : '0'));
+} catch {}
 try { const f0 = Favs.read(); document.documentElement.classList.toggle('has-favs', Boolean(f0.driver.length || f0.team.length)); } catch {}
 
 // адреса картинок, которые уже показаны: при перерисовке окна фото сразу видно, без нового проявления
@@ -7781,6 +7691,7 @@ const Watch = {
     if (w[id]) delete w[id]; else w[id] = Date.now();
     try { safeStorage.set(this.key, JSON.stringify(w)); } catch {}
     this.paint(w);
+    syncHomeSpoilers();
     if (w[id] && !Motion.reduced()) $$(`[data-watch="${id}"]`).forEach(b => { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); setTimeout(() => b.classList.remove('pop'), 500); });
     if (state.tab === 'my') loadMyPage({ checklist: false });
     return Boolean(w[id]);
